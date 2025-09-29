@@ -5,7 +5,7 @@ import type { UserProfile } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const USER_STORAGE_KEY = 'anon-connect-user';
-const LAST_STRANGER_KEY = 'anon-connect-last-stranger';
+const STRANGERS_HISTORY_KEY = 'anon-connect-strangers-history';
 
 const userAvatars = PlaceHolderImages.filter(p => p.id.startsWith('avatar'));
 
@@ -15,9 +15,11 @@ const createDefaultUser = (): UserProfile => ({
   avatar: userAvatars.length > 0 ? userAvatars[0].imageUrl : 'https://picsum.photos/seed/avatar1/100/100',
 });
 
+const MAX_HISTORY_LENGTH = 5;
+
 export function useUser() {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [lastStranger, setLastStranger] = useState<UserProfile | null>(null);
+  const [strangersHistory, setStrangersHistory] = useState<UserProfile[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -38,9 +40,9 @@ export function useUser() {
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(defaultUser));
       }
 
-      const storedStranger = localStorage.getItem(LAST_STRANGER_KEY);
-      if(storedStranger) {
-        setLastStranger(JSON.parse(storedStranger));
+      const storedHistory = localStorage.getItem(STRANGERS_HISTORY_KEY);
+      if(storedHistory) {
+        setStrangersHistory(JSON.parse(storedHistory));
       }
 
     } catch (error) {
@@ -63,14 +65,13 @@ export function useUser() {
     });
   }, []);
 
-  const updateLastStranger = useCallback((stranger: UserProfile | null) => {
-    setLastStranger(stranger);
-    if (stranger) {
-      localStorage.setItem(LAST_STRANGER_KEY, JSON.stringify(stranger));
-    } else {
-      localStorage.removeItem(LAST_STRANGER_KEY);
-    }
+  const addStrangerToHistory = useCallback((stranger: UserProfile) => {
+    setStrangersHistory(prevHistory => {
+        const newHistory = [stranger, ...prevHistory.filter(s => s.id !== stranger.id)].slice(0, MAX_HISTORY_LENGTH);
+        localStorage.setItem(STRANGERS_HISTORY_KEY, JSON.stringify(newHistory));
+        return newHistory;
+    });
   }, []);
 
-  return { user, updateUser, isLoaded, lastStranger, updateLastStranger };
+  return { user, updateUser, isLoaded, strangersHistory, addStrangerToHistory };
 }

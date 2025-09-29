@@ -28,7 +28,7 @@ function getRandomStranger(): UserProfile {
 }
 
 export function ChatClient() {
-  const { user, isLoaded, updateLastStranger } = useUser();
+  const { user, isLoaded, addStrangerToHistory } = useUser();
   const { toast } = useToast();
   const [stranger, setStranger] = useState<UserProfile>({ id: '', username: '', avatar: '' });
   const [messages, setMessages] = useState<Message[]>([]);
@@ -39,8 +39,8 @@ export function ChatClient() {
   useEffect(() => {
     const newStranger = getRandomStranger();
     setStranger(newStranger);
-    updateLastStranger(newStranger);
-  }, [updateLastStranger]);
+    addStrangerToHistory(newStranger);
+  }, [addStrangerToHistory]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -50,7 +50,7 @@ export function ChatClient() {
     setMessages([]);
     const newStranger = getRandomStranger();
     setStranger(newStranger);
-    updateLastStranger(newStranger);
+    addStrangerToHistory(newStranger);
     toast({
         title: 'Finding new chat...',
         description: 'You have been connected with a new stranger.',
