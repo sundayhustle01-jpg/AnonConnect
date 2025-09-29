@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useEffect } from 'react';
 
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser } from '@/hooks/use-user';
@@ -13,7 +14,25 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
-import { User } from 'lucide-react';
+import { User, Users } from 'lucide-react';
+import type { UserProfile } from '@/lib/types';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+const userAvatars = PlaceHolderImages.filter(img => img.id.startsWith('avatar'));
+
+const dummyUsers: Omit<UserProfile, 'id'>[] = [
+  { username: 'AstroCat', avatar: userAvatars[0].imageUrl },
+  { username: 'PixelPilot', avatar: userAvatars[1].imageUrl },
+  { username: 'SynthWaveRider', avatar: userAvatars[2].imageUrl },
+  { username: 'QuantumQuokka', avatar: userAvatars[3].imageUrl },
+];
 
 const profileSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters.').max(20, 'Username must be 20 characters or less.'),
@@ -21,8 +40,6 @@ const profileSchema = z.object({
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
-
-const userAvatars = PlaceHolderImages.filter(img => img.id.startsWith('avatar'));
 
 export function ProfileSetup() {
   const { user, updateUser } = useUser();
@@ -35,9 +52,27 @@ export function ProfileSetup() {
     },
   });
 
+  useEffect(() => {
+    if (user?.username && user.avatar) {
+      form.reset({
+        username: user.username,
+        avatar: user.avatar,
+      });
+    }
+  }, [user, form]);
+
   function onSubmit(data: ProfileFormValues) {
     updateUser(data);
   }
+
+  const handleDummyUserSelect = (username: string) => {
+    const selectedUser = dummyUsers.find(u => u.username === username);
+    if (selectedUser) {
+      form.setValue('username', selectedUser.username);
+      form.setValue('avatar', selectedUser.avatar);
+    }
+  };
+
 
   return (
     <Card className="w-full max-w-md animate-fade-in-up">
@@ -46,10 +81,44 @@ export function ProfileSetup() {
           <User /> Create Your Profile
         </CardTitle>
         <CardDescription>
-          Choose a username and avatar to start chatting. This is just for fun and isn't saved anywhere permanently.
+          Choose a username and avatar, or pick a dummy account to get started.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
+        <div>
+            <Label className="flex items-center gap-2 mb-2">
+                <Users className="h-4 w-4" />
+                Quick Start
+            </Label>
+            <Select onValueChange={handleDummyUserSelect}>
+                <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a dummy account..." />
+                </SelectTrigger>
+                <SelectContent>
+                    {dummyUsers.map((dummy) => (
+                    <SelectItem key={dummy.username} value={dummy.username}>
+                        <div className="flex items-center gap-3">
+                        <Avatar className="h-6 w-6">
+                            <AvatarImage src={dummy.avatar} alt={dummy.username} />
+                            <AvatarFallback>{dummy.username.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span>{dummy.username}</span>
+                        </div>
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+
+        <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or create your own</span>
+            </div>
+        </div>
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
@@ -74,7 +143,7 @@ export function ProfileSetup() {
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                       className="grid grid-cols-4 gap-4"
                     >
                       {userAvatars.map(avatar => (
@@ -114,3 +183,5 @@ export function ProfileSetup() {
     </Card>
   );
 }
+
+    
