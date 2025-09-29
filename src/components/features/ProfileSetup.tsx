@@ -4,7 +4,8 @@ import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { DialogClose } from '@radix-ui/react-dialog';
 
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser } from '@/hooks/use-user';
@@ -28,112 +29,118 @@ import {
 const userAvatars = PlaceHolderImages.filter(img => img.id.startsWith('avatar'));
 
 const dummyUsers: Omit<UserProfile, 'id'>[] = [
-  { username: 'AstroCat', avatar: userAvatars[0].imageUrl },
-  { username: 'PixelPilot', avatar: userAvatars[1].imageUrl },
-  { username: 'SynthWaveRider', avatar: userAvatars[2].imageUrl },
-  { username: 'QuantumQuokka', avatar: userAvatars[3].imageUrl },
+  { username: 'AstroCat', avatar: userAvatars[0].imageUrl, age: 25, gender: 'male', location: 'USA' },
+  { username: 'PixelPilot', avatar: userAvatars[1].imageUrl, age: 30, gender: 'female', location: 'Canada' },
+  { username: 'SynthWaveRider', avatar: userAvatars[2].imageUrl, age: 22, gender: 'other', location: 'UK' },
+  { username: 'QuantumQuokka', avatar: userAvatars[3].imageUrl, age: 28, gender: 'prefer-not-to-say', location: 'Australia' },
 ];
 
 const profileSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters.').max(20, 'Username must be 20 characters or less.'),
   avatar: z.string().url('Please select an avatar.'),
+  age: z.coerce.number().min(13, 'You must be at least 13 years old.').max(120, 'Age seems unlikely.').optional().or(z.literal('')),
+  gender: z.enum(['male', 'female', 'other', 'prefer-not-to-say']).optional(),
+  location: z.string().max(50, 'Location can be up to 50 characters.').optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export function ProfileSetup() {
   const { user, updateUser } = useUser();
+  const [isEditing, setIsEditing] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      username: user?.username || '',
-      avatar: user?.avatar || (userAvatars.length > 0 ? userAvatars[0].imageUrl : ''),
+      username: '',
+      avatar: userAvatars.length > 0 ? userAvatars[0].imageUrl : '',
+      age: '',
+      gender: 'prefer-not-to-say',
+      location: '',
     },
   });
 
   useEffect(() => {
-    if (user?.username && user.avatar) {
+    if (user) {
+      setIsEditing(!!user.username);
       form.reset({
-        username: user.username,
-        avatar: user.avatar,
+        username: user.username || '',
+        avatar: user.avatar || (userAvatars.length > 0 ? userAvatars[0].imageUrl : ''),
+        age: user.age || '',
+        gender: user.gender || 'prefer-not-to-say',
+        location: user.location || '',
       });
     }
   }, [user, form]);
 
   function onSubmit(data: ProfileFormValues) {
-    updateUser(data);
+    const profileData: Partial<UserProfile> = {
+      ...data,
+      age: data.age ? Number(data.age) : undefined,
+    };
+    updateUser(profileData);
   }
 
   const handleDummyUserSelect = (username: string) => {
     const selectedUser = dummyUsers.find(u => u.username === username);
     if (selectedUser) {
-      form.setValue('username', selectedUser.username);
-      form.setValue('avatar', selectedUser.avatar);
+      form.reset(selectedUser);
     }
   };
 
 
   return (
-    <Card className="w-full max-w-md animate-fade-in-up">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-primary">
-          <User /> Create Your Profile
-        </CardTitle>
-        <CardDescription>
-          Choose a username and avatar, or pick a dummy account to get started.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-            <Label className="flex items-center gap-2 mb-2">
-                <Users className="h-4 w-4" />
-                Quick Start
-            </Label>
-            <Select onValueChange={handleDummyUserSelect}>
-                <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a dummy account..." />
-                </SelectTrigger>
-                <SelectContent>
-                    {dummyUsers.map((dummy) => (
-                    <SelectItem key={dummy.username} value={dummy.username}>
-                        <div className="flex items-center gap-3">
-                        <Avatar className="h-6 w-6">
-                            <AvatarImage src={dummy.avatar} alt={dummy.username} />
-                            <AvatarFallback>{dummy.username.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span>{dummy.username}</span>
-                        </div>
-                    </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
-
-        <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+    <Card className={cn("w-full max-w-md", !isEditing && "animate-fade-in-up")}>
+      {!isEditing && (
+        <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-primary">
+              <User /> Create Your Profile
+            </CardTitle>
+            <CardDescription>
+              Choose a username and avatar, or pick a dummy account to get started.
+            </CardDescription>
+        </CardHeader>
+      )}
+      <CardContent className={cn(isEditing && "pt-6")}>
+        {!isEditing && (
+            <>
+            <div>
+                <FormLabel className="flex items-center gap-2 mb-2">
+                    <Users className="h-4 w-4" />
+                    Quick Start
+                </FormLabel>
+                <Select onValueChange={handleDummyUserSelect}>
+                    <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a dummy account..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {dummyUsers.map((dummy) => (
+                        <SelectItem key={dummy.username} value={dummy.username}>
+                            <div className="flex items-center gap-3">
+                            <Avatar className="h-6 w-6">
+                                <AvatarImage src={dummy.avatar} alt={dummy.username} />
+                                <AvatarFallback>{dummy.username.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span>{dummy.username}</span>
+                            </div>
+                        </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Or create your own</span>
+            <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Or create your own</span>
+                </div>
             </div>
-        </div>
+            </>
+        )}
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
-                  <FormControl>
-                    <Input placeholder="CoolCat123" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="avatar"
@@ -174,14 +181,78 @@ export function ProfileSetup() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" size="lg">
-              Save and Continue
-            </Button>
+             <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username</FormLabel>
+                  <FormControl>
+                    <Input placeholder="CoolCat123" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+               <FormField
+                control={form.control}
+                name="age"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Age</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="e.g. 25" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+             <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Location</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. New York, USA" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogClose asChild>
+              <Button type="submit" className="w-full" size="lg">
+                Save Profile
+              </Button>
+            </DialogClose>
           </form>
         </Form>
       </CardContent>
     </Card>
   );
 }
-
-    

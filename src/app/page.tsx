@@ -1,13 +1,21 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Loader2, MessageCircle } from 'lucide-react';
+import { ArrowRight, Loader2, MessageCircle, Pencil } from 'lucide-react';
 import { AppHeader } from '@/components/features/AppHeader';
 import { ProfileSetup } from '@/components/features/ProfileSetup';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/hooks/use-user';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 export default function HomePage() {
   const { user, strangersHistory, isLoaded } = useUser();
@@ -28,12 +36,33 @@ export default function HomePage() {
       <main className="container mx-auto flex flex-1 flex-col items-center justify-center p-4">
         {user?.username ? (
           <div className="flex flex-col items-center gap-4 animate-fade-in w-full max-w-xl">
-             <Button asChild size="lg" className="w-full font-bold shadow-lg shadow-primary/20">
-              <Link href="/chat">
-                Start Random Chat
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
+             <div className="flex w-full gap-2">
+              <Button asChild size="lg" className="w-full font-bold shadow-lg shadow-primary/20">
+                <Link href="/chat">
+                  Start Random Chat
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="lg" className="shadow-lg">
+                    <Pencil className="h-5 w-5" />
+                    <span className="sr-only">Edit Profile</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Profile</DialogTitle>
+                    <DialogDescription>
+                      Update your profile information.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="max-h-[70vh] overflow-y-auto p-1">
+                    <ProfileSetup />
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
 
             {strangersHistory && strangersHistory.length > 0 && (
               <Card className="mt-8 w-full animate-fade-in-up">

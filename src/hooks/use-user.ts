@@ -13,6 +13,9 @@ const createDefaultUser = (): UserProfile => ({
   id: crypto.randomUUID(),
   username: '',
   avatar: userAvatars.length > 0 ? userAvatars[0].imageUrl : 'https://picsum.photos/seed/avatar1/100/100',
+  age: undefined,
+  gender: undefined,
+  location: undefined,
 });
 
 const MAX_HISTORY_LENGTH = 5;
@@ -27,7 +30,7 @@ export function useUser() {
       const storedUser = localStorage.getItem(USER_STORAGE_KEY);
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        if (parsedUser && parsedUser.id && parsedUser.username !== undefined && parsedUser.avatar) {
+        if (parsedUser && parsedUser.id) {
           setUser(parsedUser);
         } else {
             const defaultUser = createDefaultUser();
@@ -59,6 +62,9 @@ export function useUser() {
           id: prevUser?.id || crypto.randomUUID(),
           username: newProfileData.username ?? prevUser?.username ?? '',
           avatar: newProfileData.avatar ?? prevUser?.avatar ?? '',
+          age: newProfileData.age ?? prevUser?.age,
+          gender: newProfileData.gender ?? prevUser?.gender,
+          location: newProfileData.location ?? prevUser?.location,
       };
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
       return updatedUser;
