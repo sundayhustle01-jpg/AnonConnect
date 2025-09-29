@@ -73,17 +73,19 @@ export default function HomePage() {
                   </CardTitle>
                   <CardDescription>People you have recently chatted with.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-4">
+                <CardContent className="flex flex-col gap-1">
                     {strangersHistory.map((stranger) => (
-                         <div key={stranger.id} className="flex items-center gap-4 p-2 rounded-lg hover:bg-secondary/50 transition-colors">
-                            <Avatar className="h-12 w-12">
-                                <AvatarImage src={stranger.avatar} alt={stranger.username} />
-                                <AvatarFallback>{stranger.username.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className='text-left'>
-                                <p className="font-bold text-md">{stranger.username}</p>
+                        <Link key={stranger.id} href={`/chat?stranger=${encodeURIComponent(JSON.stringify(stranger))}`} className="block rounded-lg hover:bg-secondary/50 transition-colors">
+                            <div className="flex items-center gap-4 p-3">
+                                <Avatar className="h-12 w-12">
+                                    <AvatarImage src={stranger.avatar} alt={stranger.username} />
+                                    <AvatarFallback>{stranger.username.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className='text-left'>
+                                    <p className="font-bold text-md">{stranger.username}</p>
+                                </div>
                             </div>
-                        </div>
+                        </Link>
                     ))}
                 </CardContent>
               </Card>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Loader2, Power, Send, Users } from 'lucide-react';
 
 import type { Message, UserProfile } from '@/lib/types';
@@ -30,17 +31,36 @@ function getRandomStranger(): UserProfile {
 export function ChatClient() {
   const { user, isLoaded, addStrangerToHistory } = useUser();
   const { toast } = useToast();
-  const [stranger, setStranger] = useState<UserProfile>({ id: '', username: '', avatar: '' });
+  const searchParams = useSearchParams();
+  const [stranger, setStranger] = useState<UserProfile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isPending, startTransition] = useTransition();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const strangerParam = searchParams.get('stranger');
+    if (strangerParam) {
+        try {
+            const passedStranger: UserProfile = JSON.parse(strangerParam);
+            setStranger(passedStranger);
+            // We still add them to history to bring them to the top.
+            addStrangerToHistory(passedStranger);
+        } catch (error) {
+            console.error('Failed to parse stranger from URL, starting random chat.', error);
+            startNewRandomChat();
+        }
+    } else {
+        startNewRandomChat();
+    }
+  }, [searchParams, addStrangerToHistory]);
+
+  const startNewRandomChat = () => {
     const newStranger = getRandomStranger();
     setStranger(newStranger);
     addStrangerToHistory(newStranger);
-  }, [addStrangerToHistory]);
+    return newStranger;
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,18 +68,16 @@ export function ChatClient() {
   
   const handleNewChat = () => {
     setMessages([]);
-    const newStranger = getRandomStranger();
-    setStranger(newStranger);
-    addStrangerToHistory(newStranger);
+    const newStranger = startNewRandomChat();
     toast({
         title: 'Finding new chat...',
-        description: 'You have been connected with a new stranger.',
+        description: `You have been connected with ${newStranger.username}.`,
     });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!inputValue.trim() || !user) return;
+    if (!inputValue.trim() || !user || !stranger) return;
     const optimisticInput = inputValue;
     setInputValue('');
 
@@ -81,7 +99,7 @@ export function ChatClient() {
     });
   };
 
-  if (!isLoaded || !user) {
+  if (!isLoaded || !user || !stranger) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
