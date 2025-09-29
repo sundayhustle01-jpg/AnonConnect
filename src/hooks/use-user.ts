@@ -5,6 +5,7 @@ import type { UserProfile } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const USER_STORAGE_KEY = 'anon-connect-user';
+const LAST_STRANGER_KEY = 'anon-connect-last-stranger';
 
 const userAvatars = PlaceHolderImages.filter(p => p.id.startsWith('avatar'));
 
@@ -16,6 +17,7 @@ const createDefaultUser = (): UserProfile => ({
 
 export function useUser() {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [lastStranger, setLastStranger] = useState<UserProfile | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -23,7 +25,6 @@ export function useUser() {
       const storedUser = localStorage.getItem(USER_STORAGE_KEY);
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        // Basic validation
         if (parsedUser && parsedUser.id && parsedUser.username !== undefined && parsedUser.avatar) {
           setUser(parsedUser);
         } else {
@@ -36,6 +37,12 @@ export function useUser() {
         setUser(defaultUser);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(defaultUser));
       }
+
+      const storedStranger = localStorage.getItem(LAST_STRANGER_KEY);
+      if(storedStranger) {
+        setLastStranger(JSON.parse(storedStranger));
+      }
+
     } catch (error) {
       console.error("Failed to access localStorage:", error);
       setUser(createDefaultUser());
@@ -56,7 +63,14 @@ export function useUser() {
     });
   }, []);
 
-  return { user, updateUser, isLoaded };
-}
+  const updateLastStranger = useCallback((stranger: UserProfile | null) => {
+    setLastStranger(stranger);
+    if (stranger) {
+      localStorage.setItem(LAST_STRANGER_KEY, JSON.stringify(stranger));
+    } else {
+      localStorage.removeItem(LAST_STRANGER_KEY);
+    }
+  }, []);
 
-    
+  return { user, updateUser, isLoaded, lastStranger, updateLastStranger };
+}

@@ -19,25 +19,28 @@ import { Card, CardContent } from '../ui/card';
 const strangerAvatars = PlaceHolderImages.filter(p => p.id.startsWith('stranger'));
 const strangerUsernames = ['ShadowFigment', 'SilentEcho', 'GlitchCat', 'PixelJester', 'DreamWeaver'];
 
-function getRandomStranger(): Omit<UserProfile, 'id'> {
+function getRandomStranger(): UserProfile {
     return {
+        id: crypto.randomUUID(),
         username: strangerUsernames[Math.floor(Math.random() * strangerUsernames.length)],
         avatar: strangerAvatars[Math.floor(Math.random() * strangerAvatars.length)].imageUrl,
     };
 }
 
 export function ChatClient() {
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded, updateLastStranger } = useUser();
   const { toast } = useToast();
-  const [stranger, setStranger] = useState<Omit<UserProfile, 'id'>>({ username: '', avatar: '' });
+  const [stranger, setStranger] = useState<UserProfile>({ id: '', username: '', avatar: '' });
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isPending, startTransition] = useTransition();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setStranger(getRandomStranger());
-  }, []);
+    const newStranger = getRandomStranger();
+    setStranger(newStranger);
+    updateLastStranger(newStranger);
+  }, [updateLastStranger]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,7 +48,9 @@ export function ChatClient() {
   
   const handleNewChat = () => {
     setMessages([]);
-    setStranger(getRandomStranger());
+    const newStranger = getRandomStranger();
+    setStranger(newStranger);
+    updateLastStranger(newStranger);
     toast({
         title: 'Finding new chat...',
         description: 'You have been connected with a new stranger.',
