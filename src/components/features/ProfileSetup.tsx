@@ -31,7 +31,7 @@ export function ProfileSetup() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       username: user?.username || '',
-      avatar: user?.avatar || userAvatars[0].imageUrl,
+      avatar: user?.avatar || (userAvatars.length > 0 ? userAvatars[0].imageUrl : ''),
     },
   });
 
