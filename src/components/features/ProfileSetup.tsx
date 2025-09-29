@@ -102,44 +102,44 @@ export function ProfileSetup() {
         </CardHeader>
       )}
       <CardContent className={cn(isEditing && "pt-6")}>
-        {!isEditing && (
-            <>
-            <div>
-                <FormLabel className="flex items-center gap-2 mb-2">
-                    <Users className="h-4 w-4" />
-                    Quick Start
-                </FormLabel>
-                <Select onValueChange={handleDummyUserSelect}>
-                    <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a dummy account..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {dummyUsers.map((dummy) => (
-                        <SelectItem key={dummy.username} value={dummy.username}>
-                            <div className="flex items-center gap-3">
-                            <Avatar className="h-6 w-6">
-                                <AvatarImage src={dummy.avatar} alt={dummy.username} />
-                                <AvatarFallback>{dummy.username.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span>{dummy.username}</span>
-                            </div>
-                        </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-            <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">Or create your own</span>
-                </div>
-            </div>
-            </>
-        )}
-        
         <Form {...form}>
+          {!isEditing && (
+              <>
+              <div>
+                  <FormLabel className="flex items-center gap-2 mb-2">
+                      <Users className="h-4 w-4" />
+                      Quick Start
+                  </FormLabel>
+                  <Select onValueChange={handleDummyUserSelect}>
+                      <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a dummy account..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {dummyUsers.map((dummy) => (
+                          <SelectItem key={dummy.username} value={dummy.username}>
+                              <div className="flex items-center gap-3">
+                              <Avatar className="h-6 w-6">
+                                  <AvatarImage src={dummy.avatar} alt={dummy.username} />
+                                  <AvatarFallback>{dummy.username.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <span>{dummy.username}</span>
+                              </div>
+                          </SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+              </div>
+              <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">Or create your own</span>
+                  </div>
+              </div>
+              </>
+          )}
+          
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
