@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Loader2, Power, Send, Users } from 'lucide-react';
 
-import type { Message, UserProfile } from '@/lib/types';
+import type { Message, UserProfile, SearchFilters } from '@/lib/types';
 import { sendMessage } from '@/app/actions';
 import { useUser } from '@/hooks/use-user';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -16,16 +16,42 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '../ui/card';
+import { allStrangers } from '@/lib/strangers';
 
-const strangerAvatars = PlaceHolderImages.filter(p => p.id.startsWith('stranger'));
-const strangerUsernames = ['ShadowFigment', 'SilentEcho', 'GlitchCat', 'PixelJester', 'DreamWeaver'];
+function findStranger(filters: SearchFilters, currentUserId?: string): UserProfile | null {
+    const availableStrangers = allStrangers.filter(s => s.id !== currentUserId);
 
-function getRandomStranger(): UserProfile {
-    return {
-        id: crypto.randomUUID(),
-        username: strangerUsernames[Math.floor(Math.random() * strangerUsernames.length)],
-        avatar: strangerAvatars[Math.floor(Math.random() * strangerAvatars.length)].imageUrl,
-    };
+    const filtered = availableStrangers.filter(stranger => {
+        const ageMatch = filters.minAge && filters.maxAge && stranger.age
+            ? stranger.age >= filters.minAge && stranger.age <= filters.maxAge
+            : true;
+        
+        const genderMatch = filters.gender && filters.gender !== 'any'
+            ? stranger.gender === filters.gender
+            : true;
+
+        const locationMatch = filters.location
+            ? stranger.location?.toLowerCase().includes(filters.location.toLowerCase())
+            : true;
+
+        return ageMatch && genderMatch && locationMatch;
+    });
+
+    if (filtered.length > 0) {
+        return filtered[Math.floor(Math.random() * filtered.length)];
+    }
+
+    if (availableStrangers.length > 0) {
+        return availableStrangers[Math.floor(Math.random() * availableStrangers.length)];
+    }
+
+    return null;
+}
+
+function getRandomStranger(currentUserId?: string): UserProfile {
+    const availableStrangers = allStrangers.filter(s => s.id !== currentUserId);
+    const stranger = availableStrangers[Math.floor(Math.random() * availableStrangers.length)];
+    return stranger || allStrangers[0];
 }
 
 export function ChatClient() {
@@ -40,23 +66,47 @@ export function ChatClient() {
 
   useEffect(() => {
     const strangerParam = searchParams.get('stranger');
+    const filtersParam = searchParams.get('filters');
+
     if (strangerParam) {
         try {
             const passedStranger: UserProfile = JSON.parse(strangerParam);
             setStranger(passedStranger);
-            // We still add them to history to bring them to the top.
             addStrangerToHistory(passedStranger);
         } catch (error) {
             console.error('Failed to parse stranger from URL, starting random chat.', error);
             startNewRandomChat();
         }
+    } else if (filtersParam) {
+        try {
+            const filters: SearchFilters = JSON.parse(filtersParam);
+            const newStranger = findStranger(filters, user?.id);
+            if (newStranger) {
+                setStranger(newStranger);
+                addStrangerToHistory(newStranger);
+                toast({
+                    title: 'Found a match!',
+                    description: `You have been connected with ${newStranger.username}.`,
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'No match found',
+                    description: "We couldn't find anyone matching your criteria. Starting a random chat instead.",
+                });
+                startNewRandomChat();
+            }
+        } catch (error) {
+             console.error('Failed to parse filters from URL, starting random chat.', error);
+            startNewRandomChat();
+        }
     } else {
         startNewRandomChat();
     }
-  }, [searchParams, addStrangerToHistory]);
+  }, [searchParams, addStrangerToHistory, user?.id]);
 
   const startNewRandomChat = () => {
-    const newStranger = getRandomStranger();
+    const newStranger = getRandomStranger(user?.id);
     setStranger(newStranger);
     addStrangerToHistory(newStranger);
     return newStranger;

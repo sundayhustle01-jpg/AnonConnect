@@ -14,3 +14,10 @@ export type Message = {
   timestamp: number;
   avatar: string;
 };
+
+export type SearchFilters = {
+    minAge?: number;
+    maxAge?: number;
+    gender?: 'male' | 'female' | 'other' | 'any';
+    location?: string;
+};
