@@ -3,20 +3,20 @@
 import { useState, useEffect, useRef, useTransition } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Loader2, Power, Send, Users } from 'lucide-react';
+import { ArrowLeft, Loader2, Paperclip, Power, Send, Users, X } from 'lucide-react';
+import Image from 'next/image';
 
 import type { Message, UserProfile, SearchFilters } from '@/lib/types';
 import { sendMessage } from '@/app/actions';
 import { useUser } from '@/hooks/use-user';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Card, CardContent } from '../ui/card';
 import { allStrangers } from '@/lib/strangers';
+import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog';
 
 function findStranger(filters: SearchFilters, currentUserId?: string): UserProfile | null {
     const availableStrangers = allStrangers.filter(s => s.id !== currentUserId);
@@ -61,8 +61,10 @@ export function ChatClient() {
   const [stranger, setStranger] = useState<UserProfile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [imageToSend, setImageToSend] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const strangerParam = searchParams.get('stranger');
@@ -109,6 +111,8 @@ export function ChatClient() {
     const newStranger = getRandomStranger(user?.id);
     setStranger(newStranger);
     addStrangerToHistory(newStranger);
+    setMessages([]);
+    setImageToSend(null);
     return newStranger;
   };
 
@@ -117,7 +121,6 @@ export function ChatClient() {
   }, [messages]);
   
   const handleNewChat = () => {
-    setMessages([]);
     const newStranger = startNewRandomChat();
     toast({
         title: 'Finding new chat...',
@@ -125,14 +128,32 @@ export function ChatClient() {
     });
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageToSend(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset file input value to allow selecting the same file again
+    if(event.target) {
+        event.target.value = '';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!inputValue.trim() || !user || !stranger) return;
+    if ((!inputValue.trim() && !imageToSend) || !user || !stranger) return;
+    
     const optimisticInput = inputValue;
+    const optimisticImage = imageToSend;
     setInputValue('');
+    setImageToSend(null);
 
     startTransition(async () => {
-      const result = await sendMessage(optimisticInput, user.avatar, stranger.avatar);
+      const result = await sendMessage(optimisticInput, user.avatar, stranger.avatar, optimisticImage ?? undefined);
       if ('error' in result) {
         toast({
           variant: 'destructive',
@@ -140,6 +161,7 @@ export function ChatClient() {
           description: result.error,
         });
         setInputValue(optimisticInput);
+        setImageToSend(optimisticImage);
       } else {
         setMessages(prev => [...prev, result.userMessage]);
         setTimeout(() => {
@@ -182,7 +204,7 @@ export function ChatClient() {
       </header>
       
       <main className="flex-1 overflow-y-auto p-4">
-        <div className="mx-auto max-w-4xl space-y-6" ref={messagesEndRef}>
+        <div className="mx-auto max-w-4xl space-y-6">
             {messages.length === 0 && (
                  <div className="flex flex-col items-center justify-center text-center text-muted-foreground pt-16 animate-fade-in">
                     <Users className="h-12 w-12 mb-4 text-primary" />
@@ -207,19 +229,66 @@ export function ChatClient() {
                             'rounded-2xl px-4 py-2 text-sm md:text-base shadow-md',
                             message.sender === 'user'
                             ? 'rounded-br-none bg-primary text-primary-foreground'
-                            : 'rounded-bl-none bg-secondary text-secondary-foreground'
+                            : 'rounded-bl-none bg-secondary text-secondary-foreground',
+                            message.image && 'p-2'
                         )}
                     >
-                        <p>{message.text}</p>
+                        {message.image ? (
+                          <Dialog>
+                            <DialogTrigger>
+                              <Image 
+                                src={message.image} 
+                                alt="Sent image" 
+                                width={200} 
+                                height={200} 
+                                className="rounded-lg object-cover cursor-pointer"
+                              />
+                            </DialogTrigger>
+                            <DialogContent className="max-w-4xl p-0">
+                               <Image 
+                                src={message.image} 
+                                alt="Sent image" 
+                                width={1000} 
+                                height={800} 
+                                className="w-full h-auto object-contain rounded-lg"
+                              />
+                            </DialogContent>
+                          </Dialog>
+                        ) : null}
+                        {message.text && <p className={cn(message.image && 'mt-2')}>{message.text}</p>}
                     </div>
                 </div>
             ))}
+             <div ref={messagesEndRef} />
         </div>
       </main>
 
       <footer className="shrink-0 border-t bg-background p-4">
         <div className="mx-auto max-w-4xl">
+           {imageToSend && (
+            <div className="relative mb-2 w-28 h-28">
+              <Image src={imageToSend} alt="Preview" layout="fill" className="rounded-lg object-cover" />
+              <Button
+                variant="destructive"
+                size="icon"
+                className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                onClick={() => setImageToSend(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="flex items-center gap-3">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept="image/png, image/jpeg, image/gif"
+            />
+            <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isPending}>
+                <Paperclip className="h-5 w-5" />
+            </Button>
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -228,7 +297,7 @@ export function ChatClient() {
               className="h-11 text-base"
               disabled={isPending}
             />
-            <Button type="submit" size="icon" className="h-11 w-11 shrink-0" disabled={isPending || !inputValue.trim()}>
+            <Button type="submit" size="icon" className="h-11 w-11 shrink-0" disabled={isPending || (!inputValue.trim() && !imageToSend)}>
               {isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             </Button>
           </form>

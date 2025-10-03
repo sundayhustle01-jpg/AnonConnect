@@ -6,9 +6,10 @@ import type { Message } from '@/lib/types';
 export async function sendMessage(
   messageText: string,
   userAvatar: string,
-  strangerAvatar: string
+  strangerAvatar: string,
+  image?: string
 ): Promise<{ userMessage: Message; strangerMessage: Message } | { error: string }> {
-  if (!messageText.trim()) {
+  if (!messageText.trim() && !image) {
     return { error: 'Message cannot be empty.' };
   }
 
@@ -18,6 +19,7 @@ export async function sendMessage(
     const userMessage: Message = {
       id: crypto.randomUUID(),
       text: filteredResult.filteredText,
+      image: image,
       sender: 'user',
       timestamp: Date.now(),
       avatar: userAvatar,
@@ -27,6 +29,7 @@ export async function sendMessage(
     const strangerMessage: Message = {
       id: crypto.randomUUID(),
       text: filteredResult.filteredText, // Echoes the filtered message
+      image: image, // Echoes the image
       sender: 'stranger',
       timestamp: Date.now() + 500, // Slightly delayed
       avatar: strangerAvatar,

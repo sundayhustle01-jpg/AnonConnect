@@ -10,6 +10,7 @@ export type UserProfile = {
 export type Message = {
   id: string;
   text: string;
+  image?: string; // New: optional image data URL
   sender: 'user' | 'stranger';
   timestamp: number;
   avatar: string;
