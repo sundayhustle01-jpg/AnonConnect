@@ -50,6 +50,7 @@ export function useUser() {
 
     } catch (error) {
       console.error("Failed to access localStorage:", error);
+      // If localStorage is blocked, create a non-persistent user object
       setUser(createDefaultUser());
     } finally {
       setIsLoaded(true);
@@ -66,7 +67,11 @@ export function useUser() {
           gender: newProfileData.gender ?? prevUser?.gender,
           location: newProfileData.location ?? prevUser?.location,
       };
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
+      try {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
+      } catch (error) {
+        console.error("Failed to save user to localStorage:", error);
+      }
       return updatedUser;
     });
   }, []);
@@ -74,7 +79,11 @@ export function useUser() {
   const addStrangerToHistory = useCallback((stranger: UserProfile) => {
     setStrangersHistory(prevHistory => {
         const newHistory = [stranger, ...prevHistory.filter(s => s.id !== stranger.id)].slice(0, MAX_HISTORY_LENGTH);
-        localStorage.setItem(STRANGERS_HISTORY_KEY, JSON.stringify(newHistory));
+        try {
+            localStorage.setItem(STRANGERS_HISTORY_KEY, JSON.stringify(newHistory));
+        } catch(error) {
+            console.error("Failed to save stranger history to localStorage:", error);
+        }
         return newHistory;
     });
   }, []);

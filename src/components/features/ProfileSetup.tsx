@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { DialogClose } from '@radix-ui/react-dialog';
 
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
-import { User, Users } from 'lucide-react';
+import { User, Users, Upload } from 'lucide-react';
 import type { UserProfile } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
@@ -48,6 +48,8 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 export function ProfileSetup() {
   const { user, updateUser } = useUser();
   const [isEditing, setIsEditing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [customAvatar, setCustomAvatar] = useState<string | null>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -63,6 +65,9 @@ export function ProfileSetup() {
   useEffect(() => {
     if (user) {
       setIsEditing(!!user.username);
+      if (user.avatar && !userAvatars.some(a => a.imageUrl === user.avatar)) {
+        setCustomAvatar(user.avatar);
+      }
       form.reset({
         username: user.username || '',
         avatar: user.avatar || (userAvatars.length > 0 ? userAvatars[0].imageUrl : ''),
@@ -85,9 +90,22 @@ export function ProfileSetup() {
     const selectedUser = dummyUsers.find(u => u.username === username);
     if (selectedUser) {
       form.reset(selectedUser);
+      setCustomAvatar(null);
     }
   };
-
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        setCustomAvatar(dataUrl);
+        form.setValue('avatar', dataUrl, { shouldValidate: true });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   return (
     <Card className={cn("w-full max-w-md", !isEditing && "animate-fade-in-up")}>
@@ -103,44 +121,44 @@ export function ProfileSetup() {
       )}
       <CardContent className={cn(isEditing && "pt-6")}>
         <Form {...form}>
-          {!isEditing && (
-              <>
-              <div>
-                  <FormLabel className="flex items-center gap-2 mb-2">
-                      <Users className="h-4 w-4" />
-                      Quick Start
-                  </FormLabel>
-                  <Select onValueChange={handleDummyUserSelect}>
-                      <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a dummy account..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                          {dummyUsers.map((dummy) => (
-                          <SelectItem key={dummy.username} value={dummy.username}>
-                              <div className="flex items-center gap-3">
-                              <Avatar className="h-6 w-6">
-                                  <AvatarImage src={dummy.avatar} alt={dummy.username} />
-                                  <AvatarFallback>{dummy.username.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <span>{dummy.username}</span>
-                              </div>
-                          </SelectItem>
-                          ))}
-                      </SelectContent>
-                  </Select>
-              </div>
-              <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">Or create your own</span>
-                  </div>
-              </div>
-              </>
-          )}
-          
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {!isEditing && (
+                <>
+                <div>
+                    <FormLabel className="flex items-center gap-2 mb-2">
+                        <Users className="h-4 w-4" />
+                        Quick Start
+                    </FormLabel>
+                    <Select onValueChange={handleDummyUserSelect}>
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a dummy account..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {dummyUsers.map((dummy) => (
+                            <SelectItem key={dummy.username} value={dummy.username}>
+                                <div className="flex items-center gap-3">
+                                <Avatar className="h-6 w-6">
+                                    <AvatarImage src={dummy.avatar} alt={dummy.username} />
+                                    <AvatarFallback>{dummy.username.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span>{dummy.username}</span>
+                                </div>
+                            </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">Or create your own</span>
+                    </div>
+                </div>
+                </>
+            )}
+            
             <FormField
               control={form.control}
               name="avatar"
@@ -149,7 +167,12 @@ export function ProfileSetup() {
                   <FormLabel>Choose your avatar</FormLabel>
                   <FormControl>
                     <RadioGroup
-                      onValueChange={field.onChange}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        if (userAvatars.some(a => a.imageUrl === value)) {
+                          setCustomAvatar(null);
+                        }
+                      }}
                       value={field.value}
                       className="grid grid-cols-4 gap-4"
                     >
@@ -175,12 +198,46 @@ export function ProfileSetup() {
                           </FormLabel>
                         </FormItem>
                       ))}
+                      {customAvatar && (
+                        <FormItem className="flex items-center justify-center">
+                          <FormControl>
+                            <RadioGroupItem value={customAvatar} className="sr-only" />
+                          </FormControl>
+                          <FormLabel
+                            className={cn(
+                              'cursor-pointer rounded-full border-2 p-1 transition-all',
+                              field.value === customAvatar ? 'border-primary' : 'border-transparent hover:border-primary/50'
+                            )}
+                          >
+                            <Image
+                              src={customAvatar}
+                              alt="Custom avatar"
+                              width={64}
+                              height={64}
+                              className="rounded-full object-cover"
+                            />
+                          </FormLabel>
+                        </FormItem>
+                      )}
                     </RadioGroup>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            
+            <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="mr-2 h-4 w-4" />
+              Upload Photo
+            </Button>
+            <Input 
+              type="file" 
+              className="hidden" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              accept="image/png, image/jpeg, image/gif"
+            />
+            
              <FormField
               control={form.control}
               name="username"
@@ -214,7 +271,7 @@ export function ProfileSetup() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Gender</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select gender" />
