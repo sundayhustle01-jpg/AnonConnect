@@ -26,6 +26,7 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
+import { ThemeToggle } from '@/components/features/ThemeToggle';
 
 export default function HomePage() {
   const { user, strangersHistory, isLoaded } = useUser();
@@ -83,6 +84,8 @@ export default function HomePage() {
                       Filtered Search
                   </Button>
                  </SearchFilterDialog>
+                 <Separator />
+                 <ThemeToggle />
               </div>
             </SheetContent>
           </Sheet>
