@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { allStrangers } from '@/lib/strangers';
 import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog';
+import { format } from 'date-fns';
 
 function getRandomStranger(currentUserId?: string): UserProfile {
     const availableStrangers = allStrangers.filter(s => s.id !== currentUserId);
@@ -220,47 +221,55 @@ export function ChatClient() {
                 <div
                     key={message.id}
                     className={cn(
-                        'flex items-end gap-3 w-full max-w-lg animate-message-in',
-                        message.sender === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'
+                        'flex w-full max-w-lg animate-message-in flex-col gap-1',
+                        message.sender === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'
                     )}
                 >
-                    <Avatar className="h-8 w-8">
-                        <AvatarImage src={message.avatar} />
-                        <AvatarFallback>{message.sender === 'user' ? user.username.charAt(0) : stranger.username.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div
-                        className={cn(
-                            'rounded-2xl px-4 py-2 text-sm md:text-base shadow-md',
-                            message.sender === 'user'
-                            ? 'rounded-br-none bg-primary text-primary-foreground'
-                            : 'rounded-bl-none bg-secondary text-secondary-foreground',
-                            message.image && 'p-2'
-                        )}
-                    >
-                        {message.image ? (
-                          <Dialog>
-                            <DialogTrigger>
-                              <Image 
-                                src={message.image} 
-                                alt="Sent image" 
-                                width={200} 
-                                height={200} 
-                                className="rounded-lg object-cover cursor-pointer"
-                              />
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl p-0">
-                               <Image 
-                                src={message.image} 
-                                alt="Sent image" 
-                                width={1000} 
-                                height={800} 
-                                className="w-full h-auto object-contain rounded-lg"
-                              />
-                            </DialogContent>
-                          </Dialog>
-                        ) : null}
-                        {message.text && <p className={cn(message.image && 'mt-2')}>{message.text}</p>}
+                    <div className={cn('flex items-end gap-3', message.sender === 'user' && 'flex-row-reverse')}>
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={message.avatar} />
+                            <AvatarFallback>{message.sender === 'user' ? user.username.charAt(0) : stranger.username.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div
+                            className={cn(
+                                'rounded-2xl px-4 py-2 text-sm md:text-base shadow-md',
+                                message.sender === 'user'
+                                ? 'rounded-br-none bg-primary text-primary-foreground'
+                                : 'rounded-bl-none bg-secondary text-secondary-foreground',
+                                message.image && 'p-2'
+                            )}
+                        >
+                            {message.image ? (
+                              <Dialog>
+                                <DialogTrigger>
+                                  <Image 
+                                    src={message.image} 
+                                    alt="Sent image" 
+                                    width={200} 
+                                    height={200} 
+                                    className="rounded-lg object-cover cursor-pointer"
+                                  />
+                                </DialogTrigger>
+                                <DialogContent className="max-w-4xl p-0">
+                                   <Image 
+                                    src={message.image} 
+                                    alt="Sent image" 
+                                    width={1000} 
+                                    height={800} 
+                                    className="w-full h-auto object-contain rounded-lg"
+                                  />
+                                </DialogContent>
+                              </Dialog>
+                            ) : null}
+                            {message.text && <p className={cn(message.image && 'mt-2')}>{message.text}</p>}
+                        </div>
                     </div>
+                     <p className={cn(
+                        "text-xs text-muted-foreground",
+                        message.sender === 'user' ? "pr-11" : "pl-11"
+                     )}>
+                        {format(new Date(message.timestamp), 'p')}
+                    </p>
                 </div>
             ))}
              <div ref={messagesEndRef} />
