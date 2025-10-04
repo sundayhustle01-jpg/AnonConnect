@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { SearchFilterDialog } from '@/components/features/SearchFilterDialog';
 import {
@@ -74,7 +75,13 @@ export default function HomePage() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="max-h-[70vh] overflow-y-auto p-1">
-                        <ProfileSetup />
+                        <ProfileSetup>
+                           <DialogClose asChild>
+                              <Button type="submit" className="w-full" size="lg">
+                                Save Profile
+                              </Button>
+                            </DialogClose>
+                        </ProfileSetup>
                     </div>
                     </DialogContent>
                 </Dialog>
@@ -131,7 +138,11 @@ export default function HomePage() {
             )}
           </div>
         ) : (
-          <ProfileSetup />
+          <ProfileSetup>
+             <Button type="submit" className="w-full" size="lg">
+                Save Profile
+              </Button>
+          </ProfileSetup>
         )}
       </main>
     </div>

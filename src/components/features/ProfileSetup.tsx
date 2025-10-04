@@ -5,8 +5,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect, useState, useRef } from 'react';
-import { DialogClose } from '@radix-ui/react-dialog';
-
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser } from '@/hooks/use-user';
 import { Button } from '@/components/ui/button';
@@ -45,7 +43,7 @@ const profileSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
-export function ProfileSetup() {
+export function ProfileSetup({ children }: { children: React.ReactNode }) {
   const { user, updateUser } = useUser();
   const [isEditing, setIsEditing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -302,11 +300,7 @@ export function ProfileSetup() {
                 </FormItem>
               )}
             />
-            <DialogClose asChild>
-              <Button type="submit" className="w-full" size="lg">
-                Save Profile
-              </Button>
-            </DialogClose>
+            {children}
           </form>
         </Form>
       </CardContent>
