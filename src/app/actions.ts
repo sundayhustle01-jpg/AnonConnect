@@ -28,7 +28,7 @@ export async function sendMessage(
     // Simulate stranger's reply
     const strangerMessage: Message = {
       id: crypto.randomUUID(),
-      text: filteredResult.filteredText, // Echoes the filtered message
+      text: `Echo: ${filteredResult.filteredText}`, // Echoes the filtered message
       image: image, // Echoes the image
       sender: 'stranger',
       timestamp: Date.now() + 500, // Slightly delayed

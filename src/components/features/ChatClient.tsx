@@ -110,7 +110,9 @@ export function ChatClient() {
   const startNewRandomChat = () => {
     const newStranger = getRandomStranger(user?.id);
     setStranger(newStranger);
-    addStrangerToHistory(newStranger);
+    if (newStranger) {
+      addStrangerToHistory(newStranger);
+    }
     setMessages([]);
     setImageToSend(null);
     return newStranger;
@@ -267,7 +269,7 @@ export function ChatClient() {
         <div className="mx-auto max-w-4xl">
            {imageToSend && (
             <div className="relative mb-2 w-28 h-28">
-              <Image src={imageToSend} alt="Preview" layout="fill" className="rounded-lg object-cover" />
+              <Image src={imageToSend} alt="Preview" fill className="rounded-lg object-cover" />
               <Button
                 variant="destructive"
                 size="icon"
