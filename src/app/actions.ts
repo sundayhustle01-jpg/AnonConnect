@@ -1,7 +1,8 @@
 'use server';
 
 import { filterProfanity } from '@/ai/flows/profanity-filter';
-import type { Message } from '@/lib/types';
+import type { Message, SearchFilters, UserProfile } from '@/lib/types';
+import { allStrangers } from '@/lib/strangers';
 
 export async function sendMessage(
   messageText: string,
@@ -40,4 +41,36 @@ export async function sendMessage(
     console.error('AI profanity filter failed:', error);
     return { error: 'Failed to process message. Please try again.' };
   }
+}
+
+export async function findStranger(
+  filters: SearchFilters,
+  currentUserId?: string
+): Promise<{ stranger: UserProfile; match: boolean }> {
+  const availableStrangers = allStrangers.filter(s => s.id !== currentUserId);
+
+  const filtered = availableStrangers.filter(stranger => {
+    const ageMatch =
+      filters.minAge && filters.maxAge && stranger.age
+        ? stranger.age >= filters.minAge && stranger.age <= filters.maxAge
+        : true;
+
+    const genderMatch =
+      filters.gender && filters.gender !== 'any' ? stranger.gender === filters.gender : true;
+
+    const locationMatch = filters.location
+      ? stranger.location?.toLowerCase().includes(filters.location.toLowerCase())
+      : true;
+
+    return ageMatch && genderMatch && locationMatch;
+  });
+
+  if (filtered.length > 0) {
+    const stranger = filtered[Math.floor(Math.random() * filtered.length)];
+    return { stranger, match: true };
+  }
+
+  // Fallback to any random stranger
+  const randomStranger = availableStrangers[Math.floor(Math.random() * availableStrangers.length)];
+  return { stranger: randomStranger || allStrangers[0], match: false };
 }

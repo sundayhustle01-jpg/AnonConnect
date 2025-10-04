@@ -8,7 +8,7 @@ import { ArrowLeft, Loader2, Paperclip, Power, Send, Users, X, Star } from 'luci
 import Image from 'next/image';
 
 import type { Message, UserProfile, SearchFilters } from '@/lib/types';
-import { sendMessage } from '@/app/actions';
+import { sendMessage, findStranger as findStrangerAction } from '@/app/actions';
 import { useUser } from '@/hooks/use-user';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,36 +18,6 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { allStrangers } from '@/lib/strangers';
 import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog';
-
-function findStranger(filters: SearchFilters, currentUserId?: string): UserProfile | null {
-    const availableStrangers = allStrangers.filter(s => s.id !== currentUserId);
-
-    const filtered = availableStrangers.filter(stranger => {
-        const ageMatch = filters.minAge && filters.maxAge && stranger.age
-            ? stranger.age >= filters.minAge && stranger.age <= filters.maxAge
-            : true;
-        
-        const genderMatch = filters.gender && filters.gender !== 'any'
-            ? stranger.gender === filters.gender
-            : true;
-
-        const locationMatch = filters.location
-            ? stranger.location?.toLowerCase().includes(filters.location.toLowerCase())
-            : true;
-
-        return ageMatch && genderMatch && locationMatch;
-    });
-
-    if (filtered.length > 0) {
-        return filtered[Math.floor(Math.random() * filtered.length)];
-    }
-
-    if (availableStrangers.length > 0) {
-        return availableStrangers[Math.floor(Math.random() * availableStrangers.length)];
-    }
-
-    return null;
-}
 
 function getRandomStranger(currentUserId?: string): UserProfile {
     const availableStrangers = allStrangers.filter(s => s.id !== currentUserId);
@@ -81,43 +51,54 @@ export function ChatClient() {
   useEffect(() => {
     const strangerParam = searchParams.get('stranger');
     const filtersParam = searchParams.get('filters');
-
-    if (strangerParam) {
-        try {
-            const passedStranger: UserProfile = JSON.parse(strangerParam);
-            setStranger(passedStranger);
-            addStrangerToHistory(passedStranger);
-        } catch (error) {
-            console.error('Failed to parse stranger from URL, starting random chat.', error);
-            startNewRandomChat();
-        }
-    } else if (filtersParam) {
-        try {
-            const filters: SearchFilters = JSON.parse(filtersParam);
-            const newStranger = findStranger(filters, user?.id);
-            if (newStranger) {
-                setStranger(newStranger);
-                addStrangerToHistory(newStranger);
-                toast({
-                    title: 'Found a match!',
-                    description: `You have been connected with ${newStranger.username}.`,
-                });
-            } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'No match found',
-                    description: "We couldn't find anyone matching your criteria. Starting a random chat instead.",
-                });
+    
+    const initializeChat = async () => {
+        if (strangerParam) {
+            try {
+                const passedStranger: UserProfile = JSON.parse(strangerParam);
+                setStranger(passedStranger);
+                addStrangerToHistory(passedStranger);
+            } catch (error) {
+                console.error('Failed to parse stranger from URL, starting random chat.', error);
                 startNewRandomChat();
             }
-        } catch (error) {
-             console.error('Failed to parse filters from URL, starting random chat.', error);
+        } else if (filtersParam) {
+            try {
+                const filters: SearchFilters = JSON.parse(filtersParam);
+                const { stranger: newStranger, match } = await findStrangerAction(filters, user?.id);
+                
+                if (newStranger) {
+                    setStranger(newStranger);
+                    addStrangerToHistory(newStranger);
+                    if (match) {
+                        toast({
+                            title: 'Found a match!',
+                            description: `You have been connected with ${newStranger.username}.`,
+                        });
+                    } else {
+                        toast({
+                             variant: 'destructive',
+                             title: 'No match found',
+                             description: "We couldn't find anyone with your criteria. Connecting you with a random user.",
+                        });
+                    }
+                } else {
+                     startNewRandomChat();
+                }
+
+            } catch (error) {
+                 console.error('Failed to parse filters from URL, starting random chat.', error);
+                startNewRandomChat();
+            }
+        } else {
             startNewRandomChat();
         }
-    } else {
-        startNewRandomChat();
     }
-  }, [searchParams, addStrangerToHistory, user?.id, toast, startNewRandomChat]);
+
+    if(isLoaded){
+        initializeChat();
+    }
+  }, [searchParams, addStrangerToHistory, user?.id, toast, startNewRandomChat, isLoaded]);
 
 
   useEffect(() => {
