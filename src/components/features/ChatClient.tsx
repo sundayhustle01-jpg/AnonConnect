@@ -16,26 +16,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { allStrangers } from '@/lib/strangers';
 import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog';
 import { format } from 'date-fns';
 
 const INACTIVITY_TIMEOUT = 2 * 60 * 1000; // 2 minutes
 
-function getRandomStranger(currentUserId?: string): UserProfile {
-    const availableStrangers = allStrangers.filter(s => s.id !== currentUserId && s.online);
-    if(availableStrangers.length > 0){
-        return availableStrangers[Math.floor(Math.random() * availableStrangers.length)];
-    }
-    const allAvailableStrangers = allStrangers.filter(s => s.id !== currentUserId);
-    return allAvailableStrangers[Math.floor(Math.random() * allAvailableStrangers.length)] || allStrangers[0];
+type ChatClientProps = {
+    initialStranger: UserProfile;
+    initialFilters: string | null;
 }
 
-export function ChatClient() {
+export function ChatClient({ initialStranger, initialFilters }: ChatClientProps) {
   const { user, isLoaded, addStrangerToHistory, addFavorite, removeFavorite, isFavorite } = useUser();
   const { toast } = useToast();
-  const searchParams = useSearchParams();
-  const [stranger, setStranger] = useState<UserProfile | null>(null);
+  const [stranger, setStranger] = useState<UserProfile | null>(initialStranger);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [imageToSend, setImageToSend] = useState<string | null>(null);
@@ -45,14 +39,14 @@ export function ChatClient() {
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const startNewRandomChat = useCallback(async () => {
-    const newStranger = await findStrangerAction({}, user?.id);
-    setStranger(newStranger.stranger);
-    if (newStranger.stranger) {
-      addStrangerToHistory(newStranger.stranger);
+    const { stranger: newStranger } = await findStrangerAction({}, user?.id);
+    setStranger(newStranger);
+    if (newStranger) {
+      addStrangerToHistory(newStranger);
     }
     setMessages([]);
     setImageToSend(null);
-    return newStranger.stranger;
+    return newStranger;
   }, [user?.id, addStrangerToHistory]);
 
   const handleNewChat = useCallback(async () => {
@@ -87,56 +81,29 @@ export function ChatClient() {
   }, [resetInactivityTimer, messages]);
 
   useEffect(() => {
-    const strangerParam = searchParams.get('stranger');
-    const filtersParam = searchParams.get('filters');
-    
-    const initializeChat = async () => {
-        if (strangerParam) {
-            try {
-                const passedStranger: UserProfile = JSON.parse(strangerParam);
-                setStranger(passedStranger);
-                addStrangerToHistory(passedStranger);
-            } catch (error) {
-                console.error('Failed to parse stranger from URL, starting random chat.', error);
-                startNewRandomChat();
-            }
-        } else if (filtersParam) {
-            try {
-                const filters: SearchFilters = JSON.parse(filtersParam);
-                const { stranger: newStranger, match } = await findStrangerAction(filters, user?.id);
-                
-                if (newStranger) {
-                    setStranger(newStranger);
-                    addStrangerToHistory(newStranger);
-                    if (match) {
-                        toast({
-                            title: 'Found a match!',
-                            description: `You have been connected with ${newStranger.username}.`,
-                        });
-                    } else {
-                        toast({
-                             variant: 'destructive',
-                             title: 'No match found',
-                             description: "We couldn't find anyone with your criteria. Connecting you with a random user.",
-                        });
-                    }
-                } else {
-                     startNewRandomChat();
-                }
+    if(isLoaded && initialStranger) {
+      setStranger(initialStranger);
+      addStrangerToHistory(initialStranger);
 
-            } catch (error) {
-                 console.error('Failed to parse filters from URL, starting random chat.', error);
-                startNewRandomChat();
+      if (initialFilters) {
+        const filters: SearchFilters = JSON.parse(initialFilters);
+        findStrangerAction(filters, user?.id).then(({ match }) => {
+            if (match) {
+                toast({
+                    title: 'Found a match!',
+                    description: `You have been connected with ${initialStranger.username}.`,
+                });
+            } else {
+                toast({
+                     variant: 'destructive',
+                     title: 'No match found',
+                     description: "We couldn't find anyone with your criteria. Connecting you with a random user.",
+                });
             }
-        } else {
-            startNewRandomChat();
-        }
+        });
+      }
     }
-
-    if(isLoaded){
-        initializeChat();
-    }
-  }, [searchParams, addStrangerToHistory, user?.id, toast, startNewRandomChat, isLoaded]);
+  }, [initialStranger, initialFilters, addStrangerToHistory, user?.id, toast, isLoaded]);
 
 
   useEffect(() => {
@@ -232,7 +199,7 @@ export function ChatClient() {
             <Button variant="ghost" size="icon" onClick={handleToggleFavorite} aria-label={isCurrentlyFavorite ? 'Remove from favorites' : 'Add to favorites'}>
                 <Star className={cn("h-5 w-5", isCurrentlyFavorite ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
             </Button>
-            <Button variant="outline" size="sm" onClick={handleNewChat}>
+            <Button variant="outline" size="sm" onClick={handleNewChat} aria-label="Start new chat">
                 <Power className="mr-2 h-4 w-4 text-primary" />
                 New Chat
             </Button>

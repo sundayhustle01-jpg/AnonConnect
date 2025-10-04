@@ -75,6 +75,7 @@ export function SearchFilterDialog({ children }: { children: React.ReactNode }) 
                   <FormLabel>Age Range: {ageRange[0]} - {ageRange[1]}</FormLabel>
                   <FormControl>
                     <Slider
+                      aria-label="Age range slider"
                       min={13}
                       max={100}
                       step={1}
@@ -93,7 +94,7 @@ export function SearchFilterDialog({ children }: { children: React.ReactNode }) 
                   <FormLabel>Gender</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger aria-label="Select gender">
                         <SelectValue placeholder="Select a gender" />
                       </SelectTrigger>
                     </FormControl>
