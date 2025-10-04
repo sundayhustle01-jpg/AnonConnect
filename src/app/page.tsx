@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Loader2, MessageCircle, Pencil, Search, Settings } from 'lucide-react';
+import { ArrowRight, Loader2, MessageCircle, Pencil, Search, Settings, LogOut } from 'lucide-react';
 import { AppHeader } from '@/components/features/AppHeader';
 import { ProfileSetup } from '@/components/features/ProfileSetup';
 import { Button } from '@/components/ui/button';
@@ -25,13 +25,14 @@ import {
   SheetTitle,
   SheetTrigger,
   SheetDescription,
+  SheetClose,
 } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/features/ThemeToggle';
 import { useEffect, useState } from 'react';
 
 export default function HomePage() {
-  const { user, strangersHistory, isLoaded } = useUser();
+  const { user, strangersHistory, isLoaded, logout } = useUser();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -99,6 +100,13 @@ export default function HomePage() {
                  </SearchFilterDialog>
                  <Separator />
                  <ThemeToggle />
+                 <Separator />
+                  <SheetClose asChild>
+                    <Button variant="destructive" className="w-full justify-start" onClick={logout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Log Out
+                    </Button>
+                  </SheetClose>
               </div>
             </SheetContent>
           </Sheet>

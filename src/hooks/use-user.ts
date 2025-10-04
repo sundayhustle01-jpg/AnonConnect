@@ -88,5 +88,22 @@ export function useUser() {
     });
   }, []);
 
-  return { user, updateUser, isLoaded, strangersHistory, addStrangerToHistory };
+  const logout = useCallback(() => {
+    try {
+        localStorage.removeItem(USER_STORAGE_KEY);
+        localStorage.removeItem(STRANGERS_HISTORY_KEY);
+        const defaultUser = createDefaultUser();
+        setUser(defaultUser);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(defaultUser));
+        setStrangersHistory([]);
+    } catch(error) {
+        console.error("Failed to logout:", error);
+        // still reset state even if localstorage fails
+        const defaultUser = createDefaultUser();
+        setUser(defaultUser);
+        setStrangersHistory([]);
+    }
+  }, []);
+
+  return { user, updateUser, isLoaded, strangersHistory, addStrangerToHistory, logout };
 }
