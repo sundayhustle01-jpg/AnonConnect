@@ -20,10 +20,15 @@ import { allStrangers } from '@/lib/strangers';
 import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog';
 import { format } from 'date-fns';
 
+const INACTIVITY_TIMEOUT = 2 * 60 * 1000; // 2 minutes
+
 function getRandomStranger(currentUserId?: string): UserProfile {
-    const availableStrangers = allStrangers.filter(s => s.id !== currentUserId);
-    const stranger = availableStrangers[Math.floor(Math.random() * availableStrangers.length)];
-    return stranger || allStrangers[0];
+    const availableStrangers = allStrangers.filter(s => s.id !== currentUserId && s.online);
+    if(availableStrangers.length > 0){
+        return availableStrangers[Math.floor(Math.random() * availableStrangers.length)];
+    }
+    const allAvailableStrangers = allStrangers.filter(s => s.id !== currentUserId);
+    return allAvailableStrangers[Math.floor(Math.random() * allAvailableStrangers.length)] || allStrangers[0];
 }
 
 export function ChatClient() {
@@ -37,17 +42,49 @@ export function ChatClient() {
   const [isPending, startTransition] = useTransition();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const startNewRandomChat = useCallback(() => {
-    const newStranger = getRandomStranger(user?.id);
-    setStranger(newStranger);
-    if (newStranger) {
-      addStrangerToHistory(newStranger);
+  const startNewRandomChat = useCallback(async () => {
+    const newStranger = await findStrangerAction({}, user?.id);
+    setStranger(newStranger.stranger);
+    if (newStranger.stranger) {
+      addStrangerToHistory(newStranger.stranger);
     }
     setMessages([]);
     setImageToSend(null);
-    return newStranger;
+    return newStranger.stranger;
   }, [user?.id, addStrangerToHistory]);
+
+  const handleNewChat = useCallback(async () => {
+    const newStranger = await startNewRandomChat();
+    toast({
+        title: 'Finding new chat...',
+        description: `You have been connected with ${newStranger.username}.`,
+    });
+  }, [startNewRandomChat, toast]);
+  
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    inactivityTimerRef.current = setTimeout(() => {
+      toast({
+        variant: 'destructive',
+        title: 'Disconnected',
+        description: 'You were disconnected due to inactivity.',
+      });
+      handleNewChat();
+    }, INACTIVITY_TIMEOUT);
+  }, [handleNewChat, toast]);
+
+  useEffect(() => {
+    resetInactivityTimer();
+    return () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    };
+  }, [resetInactivityTimer, messages]);
 
   useEffect(() => {
     const strangerParam = searchParams.get('stranger');
@@ -105,14 +142,6 @@ export function ChatClient() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
-  const handleNewChat = () => {
-    const newStranger = startNewRandomChat();
-    toast({
-        title: 'Finding new chat...',
-        description: `You have been connected with ${newStranger.username}.`,
-    });
-  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -145,6 +174,8 @@ export function ChatClient() {
     e.preventDefault();
     if ((!inputValue.trim() && !imageToSend) || !user || !stranger) return;
     
+    resetInactivityTimer();
+
     const optimisticInput = inputValue;
     const optimisticImage = imageToSend;
     setInputValue('');
@@ -194,7 +225,7 @@ export function ChatClient() {
           </Avatar>
           <div>
             <p className="font-bold">{stranger.username}</p>
-            <p className="text-xs text-primary">Online</p>
+            <p className={cn("text-xs", stranger.online ? "text-primary" : "text-muted-foreground")}>{stranger.online ? 'Online' : 'Offline'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -304,7 +335,10 @@ export function ChatClient() {
             </Button>
             <Input
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                resetInactivityTimer();
+              }}
               placeholder="Type a message..."
               autoComplete="off"
               className="h-11 text-base"

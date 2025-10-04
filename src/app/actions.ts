@@ -47,7 +47,7 @@ export async function findStranger(
   filters: SearchFilters,
   currentUserId?: string
 ): Promise<{ stranger: UserProfile; match: boolean }> {
-  const availableStrangers = allStrangers.filter(s => s.id !== currentUserId);
+  const availableStrangers = allStrangers.filter(s => s.id !== currentUserId && s.online);
 
   const filtered = availableStrangers.filter(stranger => {
     const ageMatch =
@@ -69,8 +69,16 @@ export async function findStranger(
     const stranger = filtered[Math.floor(Math.random() * filtered.length)];
     return { stranger, match: true };
   }
+  
+  const allAvailableStrangers = allStrangers.filter(s => s.id !== currentUserId);
 
-  // Fallback to any random stranger
-  const randomStranger = availableStrangers[Math.floor(Math.random() * availableStrangers.length)];
+  // Fallback to any random online stranger if no filter match
+  if (availableStrangers.length > 0) {
+    const randomStranger = availableStrangers[Math.floor(Math.random() * availableStrangers.length)];
+    return { stranger: randomStranger, match: false };
+  }
+  
+  // Fallback to any random stranger if no one is online
+  const randomStranger = allAvailableStrangers[Math.floor(Math.random() * allAvailableStrangers.length)];
   return { stranger: randomStranger || allStrangers[0], match: false };
 }

@@ -7,6 +7,7 @@ export type UserProfile = {
   gender?: 'male' | 'female' | 'other' | 'prefer-not-to-say';
   location?: string;
   favoriteIds?: string[];
+  online?: boolean;
 };
 
 export type Message = {

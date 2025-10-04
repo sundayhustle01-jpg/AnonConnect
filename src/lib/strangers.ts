@@ -10,7 +10,8 @@ export const allStrangers: UserProfile[] = [
         avatar: strangerAvatars[0]?.imageUrl || '',
         age: 25,
         gender: 'male',
-        location: 'USA'
+        location: 'USA',
+        online: true,
     },
     { 
         id: 'stranger-2',
@@ -18,7 +19,8 @@ export const allStrangers: UserProfile[] = [
         avatar: strangerAvatars[1]?.imageUrl || '',
         age: 30,
         gender: 'female',
-        location: 'Canada'
+        location: 'Canada',
+        online: true,
     },
     { 
         id: 'stranger-3',
@@ -26,7 +28,8 @@ export const allStrangers: UserProfile[] = [
         avatar: strangerAvatars[2]?.imageUrl || '',
         age: 22,
         gender: 'other',
-        location: 'UK'
+        location: 'UK',
+        online: false,
     },
     { 
         id: 'stranger-4',
@@ -34,7 +37,8 @@ export const allStrangers: UserProfile[] = [
         avatar: strangerAvatars[3]?.imageUrl || '',
         age: 28,
         gender: 'male',
-        location: 'Australia'
+        location: 'Australia',
+        online: true,
     },
     { 
         id: 'stranger-5',
@@ -42,7 +46,8 @@ export const allStrangers: UserProfile[] = [
         avatar: strangerAvatars[0]?.imageUrl || '',
         age: 35,
         gender: 'female',
-        location: 'USA'
+        location: 'USA',
+        online: true,
     },
     { 
         id: 'stranger-6',
@@ -50,7 +55,8 @@ export const allStrangers: UserProfile[] = [
         avatar: strangerAvatars[1]?.imageUrl || '',
         age: 19,
         gender: 'male',
-        location: 'Germany'
+        location: 'Germany',
+        online: false,
     },
     { 
         id: 'stranger-7',
@@ -58,7 +64,8 @@ export const allStrangers: UserProfile[] = [
         avatar: strangerAvatars[2]?.imageUrl || '',
         age: 42,
         gender: 'other',
-        location: 'Japan'
+        location: 'Japan',
+        online: true,
     },
     { 
         id: 'stranger-8',
@@ -66,6 +73,7 @@ export const allStrangers: UserProfile[] = [
         avatar: strangerAvatars[3]?.imageUrl || '',
         age: 29,
         gender: 'female',
-        location: 'UK'
+        location: 'UK',
+        online: true,
     },
 ];
