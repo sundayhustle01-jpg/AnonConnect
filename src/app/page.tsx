@@ -99,14 +99,6 @@ export default function HomePage() {
                       Filtered Search
                   </Button>
                  </SearchFilterDialog>
-                  <SheetClose asChild>
-                    <Button variant="outline" className="w-full justify-start" asChild>
-                      <Link href="/favorites">
-                        <Star className="mr-2 h-4 w-4" />
-                        Favorites
-                      </Link>
-                    </Button>
-                  </SheetClose>
                  <Separator />
                  <ThemeToggle />
                  <Separator />
@@ -124,11 +116,17 @@ export default function HomePage() {
       <main className="container mx-auto flex flex-1 flex-col items-center justify-center p-4">
         {user?.username ? (
           <div className="flex flex-col items-center gap-4 animate-fade-in w-full max-w-xl">
-             <div className="grid grid-cols-1 w-full gap-2">
+             <div className="grid grid-cols-1 md:grid-cols-2 w-full gap-2">
               <Button asChild size="lg" className="w-full font-bold shadow-lg shadow-primary/20">
                 <Link href="/chat">
                   Start Random Chat
                   <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="w-full font-bold">
+                 <Link href="/favorites">
+                    <Star className="mr-2 h-5 w-5" />
+                    Favorites
                 </Link>
               </Button>
             </div>
