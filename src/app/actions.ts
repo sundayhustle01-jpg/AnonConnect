@@ -1,6 +1,5 @@
 'use server';
 
-import { filterProfanity } from '@/ai/flows/profanity-filter';
 import type { Message, SearchFilters, UserProfile } from '@/lib/types';
 import { allStrangers } from '@/lib/strangers';
 
@@ -15,11 +14,10 @@ export async function sendMessage(
   }
 
   try {
-    const filteredResult = await filterProfanity({ text: messageText });
-
+    // AI profanity filter is removed. We'll use the message text directly.
     const userMessage: Message = {
       id: crypto.randomUUID(),
-      text: filteredResult.filteredText,
+      text: messageText,
       image: image,
       sender: 'user',
       timestamp: Date.now(),
@@ -29,7 +27,7 @@ export async function sendMessage(
     // Simulate stranger's reply
     const strangerMessage: Message = {
       id: crypto.randomUUID(),
-      text: `Echo: ${filteredResult.filteredText}`, // Echoes the filtered message
+      text: `Echo: ${messageText}`, // Echoes the original message
       image: image, // Echoes the image
       sender: 'stranger',
       timestamp: Date.now() + 500, // Slightly delayed
@@ -38,7 +36,7 @@ export async function sendMessage(
 
     return { userMessage, strangerMessage };
   } catch (error) {
-    console.error('AI profanity filter failed:', error);
+    console.error('Failed to send message:', error);
     return { error: 'Failed to process message. Please try again.' };
   }
 }
