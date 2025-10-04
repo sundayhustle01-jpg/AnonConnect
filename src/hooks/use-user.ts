@@ -49,9 +49,6 @@ export function useUser() {
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(currentUser));
       }
       
-      const favoriteStrangers = allStrangers.filter(s => currentUser.favoriteIds?.includes(s.id));
-      setFavorites(favoriteStrangers);
-
       const storedHistory = localStorage.getItem(STRANGERS_HISTORY_KEY);
       if(storedHistory) {
         setStrangersHistory(JSON.parse(storedHistory));
@@ -65,6 +62,16 @@ export function useUser() {
       setIsLoaded(true);
     }
   }, []);
+
+  // Effect to update favorites when user's favoriteIds change
+  useEffect(() => {
+    if (user?.favoriteIds) {
+      const favoriteStrangers = allStrangers.filter(s => user.favoriteIds!.includes(s.id));
+      setFavorites(favoriteStrangers);
+    } else {
+      setFavorites([]);
+    }
+  }, [user?.favoriteIds]);
 
   const updateUser = useCallback((newProfileData: Partial<Omit<UserProfile, 'id'>>) => {
     setUser(prevUser => {
@@ -119,24 +126,21 @@ export function useUser() {
   
   const addFavorite = useCallback((strangerId: string) => {
     if (!user) return;
+    // Add only if not already present
+    if (user.favoriteIds?.includes(strangerId)) return;
     const newFavoriteIds = [...(user.favoriteIds || []), strangerId];
     updateUser({ favoriteIds: newFavoriteIds });
-    const stranger = allStrangers.find(s => s.id === strangerId);
-    if (stranger) {
-        setFavorites(prev => [...prev, stranger]);
-    }
   }, [user, updateUser]);
 
   const removeFavorite = useCallback((strangerId: string) => {
     if (!user) return;
     const newFavoriteIds = (user.favoriteIds || []).filter(id => id !== strangerId);
     updateUser({ favoriteIds: newFavoriteIds });
-    setFavorites(prev => prev.filter(s => s.id !== strangerId));
   }, [user, updateUser]);
   
   const isFavorite = useCallback((strangerId: string) => {
       return user?.favoriteIds?.includes(strangerId) ?? false;
-  }, [user]);
+  }, [user?.favoriteIds]);
 
 
   return { user, updateUser, isLoaded, strangersHistory, addStrangerToHistory, logout, favorites, addFavorite, removeFavorite, isFavorite };
