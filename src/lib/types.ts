@@ -1,3 +1,4 @@
+
 export type UserProfile = {
   id: string;
   username: string;
@@ -5,6 +6,7 @@ export type UserProfile = {
   age?: number;
   gender?: 'male' | 'female' | 'other' | 'prefer-not-to-say';
   location?: string;
+  favoriteIds?: string[];
 };
 
 export type Message = {

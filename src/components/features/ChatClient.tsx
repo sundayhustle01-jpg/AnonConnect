@@ -1,9 +1,10 @@
+
 'use client';
 
-import { useState, useEffect, useRef, useTransition } from 'react';
+import { useState, useEffect, useRef, useTransition, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Loader2, Paperclip, Power, Send, Users, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Paperclip, Power, Send, Users, X, Star } from 'lucide-react';
 import Image from 'next/image';
 
 import type { Message, UserProfile, SearchFilters } from '@/lib/types';
@@ -55,7 +56,7 @@ function getRandomStranger(currentUserId?: string): UserProfile {
 }
 
 export function ChatClient() {
-  const { user, isLoaded, addStrangerToHistory } = useUser();
+  const { user, isLoaded, addStrangerToHistory, addFavorite, removeFavorite, isFavorite } = useUser();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [stranger, setStranger] = useState<UserProfile | null>(null);
@@ -65,6 +66,17 @@ export function ChatClient() {
   const [isPending, startTransition] = useTransition();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const startNewRandomChat = useCallback(() => {
+    const newStranger = getRandomStranger(user?.id);
+    setStranger(newStranger);
+    if (newStranger) {
+      addStrangerToHistory(newStranger);
+    }
+    setMessages([]);
+    setImageToSend(null);
+    return newStranger;
+  }, [user?.id, addStrangerToHistory]);
 
   useEffect(() => {
     const strangerParam = searchParams.get('stranger');
@@ -105,18 +117,8 @@ export function ChatClient() {
     } else {
         startNewRandomChat();
     }
-  }, [searchParams, addStrangerToHistory, user?.id]);
+  }, [searchParams, addStrangerToHistory, user?.id, toast, startNewRandomChat]);
 
-  const startNewRandomChat = () => {
-    const newStranger = getRandomStranger(user?.id);
-    setStranger(newStranger);
-    if (newStranger) {
-      addStrangerToHistory(newStranger);
-    }
-    setMessages([]);
-    setImageToSend(null);
-    return newStranger;
-  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -143,6 +145,18 @@ export function ChatClient() {
     if(event.target) {
         event.target.value = '';
     }
+  };
+
+  const handleToggleFavorite = () => {
+      if (!stranger) return;
+      const isCurrentlyFavorite = isFavorite(stranger.id);
+      if (isCurrentlyFavorite) {
+          removeFavorite(stranger.id);
+          toast({ title: `${stranger.username} removed from favorites.` });
+      } else {
+          addFavorite(stranger.id);
+          toast({ title: `${stranger.username} added to favorites.` });
+      }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -180,6 +194,8 @@ export function ChatClient() {
       </div>
     );
   }
+  
+  const isCurrentlyFavorite = isFavorite(stranger.id);
 
   return (
     <div className="flex h-screen flex-col">
@@ -199,10 +215,15 @@ export function ChatClient() {
             <p className="text-xs text-primary">Online</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={handleNewChat}>
-            <Power className="mr-2 h-4 w-4 text-primary" />
-            New Chat
-        </Button>
+        <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={handleToggleFavorite}>
+                <Star className={cn("h-5 w-5", isCurrentlyFavorite ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleNewChat}>
+                <Power className="mr-2 h-4 w-4 text-primary" />
+                New Chat
+            </Button>
+        </div>
       </header>
       
       <main className="flex-1 overflow-y-auto p-4">

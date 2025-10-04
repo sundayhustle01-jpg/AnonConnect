@@ -1,7 +1,8 @@
+
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Loader2, MessageCircle, Pencil, Search, Settings, LogOut } from 'lucide-react';
+import { ArrowRight, Loader2, MessageCircle, Pencil, Search, Settings, LogOut, Star } from 'lucide-react';
 import { AppHeader } from '@/components/features/AppHeader';
 import { ProfileSetup } from '@/components/features/ProfileSetup';
 import { Button } from '@/components/ui/button';
@@ -98,6 +99,14 @@ export default function HomePage() {
                       Filtered Search
                   </Button>
                  </SearchFilterDialog>
+                  <SheetClose asChild>
+                    <Button variant="outline" className="w-full justify-start" asChild>
+                      <Link href="/favorites">
+                        <Star className="mr-2 h-4 w-4" />
+                        Favorites
+                      </Link>
+                    </Button>
+                  </SheetClose>
                  <Separator />
                  <ThemeToggle />
                  <Separator />
