@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser } from '@/hooks/use-user';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ export function ProfileSetup({ children }: { children: React.ReactNode }) {
   const [isEditing, setIsEditing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [customAvatar, setCustomAvatar] = useState<string | null>(null);
+  const router = useRouter();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -77,11 +79,16 @@ export function ProfileSetup({ children }: { children: React.ReactNode }) {
   }, [user, form]);
 
   function onSubmit(data: ProfileFormValues) {
+    const wasEditing = isEditing;
     const profileData: Partial<UserProfile> = {
       ...data,
       age: data.age ? Number(data.age) : undefined,
     };
     updateUser(profileData);
+
+    if (!wasEditing) {
+      router.push('/chat');
+    }
   }
 
   const handleDummyUserSelect = (username: string) => {
