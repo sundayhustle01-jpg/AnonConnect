@@ -28,11 +28,17 @@ import {
 } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/features/ThemeToggle';
+import { useEffect, useState } from 'react';
 
 export default function HomePage() {
   const { user, strangersHistory, isLoaded } = useUser();
+  const [isClient, setIsClient] = useState(false);
 
-  if (!isLoaded) {
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isLoaded || !isClient) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <main className="flex flex-1 items-center justify-center">
