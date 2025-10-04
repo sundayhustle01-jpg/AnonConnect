@@ -56,7 +56,7 @@ export default function HomePage() {
         {user?.username && (
            <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" aria-label="Open settings">
                 <Settings className="h-5 w-5" />
               </Button>
             </SheetTrigger>
@@ -161,7 +161,7 @@ export default function HomePage() {
         ) : (
           <ProfileSetup>
              <Button type="submit" className="w-full" size="lg">
-                Save Profile
+                Save Profile & Start
               </Button>
           </ProfileSetup>
         )}

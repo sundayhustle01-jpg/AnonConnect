@@ -214,7 +214,7 @@ export function ChatClient() {
     <div className="flex h-screen flex-col">
       <header className="flex shrink-0 items-center justify-between border-b bg-background/80 p-3 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
+          <Button variant="ghost" size="icon" asChild aria-label="Back to home">
             <Link href="/">
               <ArrowLeft className="h-5 w-5" />
             </Link>
@@ -229,7 +229,7 @@ export function ChatClient() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={handleToggleFavorite}>
+            <Button variant="ghost" size="icon" onClick={handleToggleFavorite} aria-label={isCurrentlyFavorite ? 'Remove from favorites' : 'Add to favorites'}>
                 <Star className={cn("h-5 w-5", isCurrentlyFavorite ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
             </Button>
             <Button variant="outline" size="sm" onClick={handleNewChat}>
@@ -317,6 +317,7 @@ export function ChatClient() {
                 size="icon"
                 className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
                 onClick={() => setImageToSend(null)}
+                aria-label="Remove image"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -330,7 +331,7 @@ export function ChatClient() {
               className="hidden"
               accept="image/png, image/jpeg, image/gif"
             />
-            <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isPending}>
+            <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isPending} aria-label="Attach image">
                 <Paperclip className="h-5 w-5" />
             </Button>
             <Input
@@ -344,7 +345,7 @@ export function ChatClient() {
               className="h-11 text-base"
               disabled={isPending}
             />
-            <Button type="submit" size="icon" className="h-11 w-11 shrink-0" disabled={isPending || (!inputValue.trim() && !imageToSend)}>
+            <Button type="submit" size="icon" className="h-11 w-11 shrink-0" disabled={isPending || (!inputValue.trim() && !imageToSend)} aria-label="Send message">
               {isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             </Button>
           </form>

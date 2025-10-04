@@ -29,7 +29,7 @@ export default function FavoritesPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader user={user}>
-         <Button variant="ghost" size="icon" asChild>
+         <Button variant="ghost" size="icon" asChild aria-label="Back to home">
             <Link href="/">
                 <ArrowLeft className="h-5 w-5" />
             </Link>
@@ -85,4 +85,3 @@ export default function FavoritesPage() {
     </div>
   );
 }
-

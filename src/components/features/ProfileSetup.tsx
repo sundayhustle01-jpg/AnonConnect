@@ -184,7 +184,7 @@ export function ProfileSetup({ children }: { children: React.ReactNode }) {
                       {userAvatars.map(avatar => (
                         <FormItem key={avatar.id} className="flex items-center justify-center">
                           <FormControl>
-                            <RadioGroupItem value={avatar.imageUrl} className="sr-only" />
+                            <RadioGroupItem value={avatar.imageUrl} className="sr-only" aria-label={`Avatar ${avatar.id}`} />
                           </FormControl>
                           <FormLabel
                             className={cn(
@@ -206,7 +206,7 @@ export function ProfileSetup({ children }: { children: React.ReactNode }) {
                       {customAvatar && (
                         <FormItem className="flex items-center justify-center">
                           <FormControl>
-                            <RadioGroupItem value={customAvatar} className="sr-only" />
+                            <RadioGroupItem value={customAvatar} className="sr-only" aria-label="Custom avatar" />
                           </FormControl>
                           <FormLabel
                             className={cn(
