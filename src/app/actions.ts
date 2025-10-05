@@ -3,6 +3,33 @@
 import type { Message, SearchFilters, UserProfile } from '@/lib/types';
 import { allStrangers } from '@/lib/strangers';
 
+const randomReplies = [
+  "That's interesting!",
+  "Tell me more.",
+  "I see.",
+  "Hmm, what do you mean by that?",
+  "Could you elaborate?",
+  "I'm not sure I understand. Can you explain it differently?",
+  "Wow, really?",
+  "That's cool.",
+  "Got it.",
+  "Why do you say that?",
+  "What makes you think that?",
+  "I've never thought about it that way before.",
+  "That's a good point.",
+  "I'm not so sure about that.",
+  "Can you give me an example?",
+];
+
+const imageReplies = [
+    "Nice picture!",
+    "Cool image!",
+    "What's this a picture of?",
+    "I like this picture.",
+    "Where was this taken?",
+    "This looks great!",
+];
+
 export async function sendMessage(
   messageText: string,
   userAvatar: string,
@@ -14,7 +41,6 @@ export async function sendMessage(
   }
 
   try {
-    // AI profanity filter is removed. We'll use the message text directly.
     const userMessage: Message = {
       id: crypto.randomUUID(),
       text: messageText,
@@ -24,11 +50,14 @@ export async function sendMessage(
       avatar: userAvatar,
     };
 
-    // Simulate stranger's reply
+    const replyText = image 
+        ? imageReplies[Math.floor(Math.random() * imageReplies.length)]
+        : randomReplies[Math.floor(Math.random() * randomReplies.length)];
+
     const strangerMessage: Message = {
       id: crypto.randomUUID(),
-      text: `Echo: ${messageText}`, // Echoes the original message
-      image: image, // Echoes the image
+      text: replyText,
+      image: undefined, 
       sender: 'stranger',
       timestamp: Date.now() + 500, // Slightly delayed
       avatar: strangerAvatar,
@@ -45,9 +74,29 @@ export async function findStranger(
   filters: SearchFilters,
   currentUserId?: string
 ): Promise<{ stranger: UserProfile; match: boolean }> {
-  const availableStrangers = allStrangers.filter(s => s.id !== currentUserId && s.online);
+  const currentUser = allStrangers.find(u => u.id === currentUserId);
+  const availableStrangers = allStrangers.filter(s => s.id !== currentUserId && s.online && !s.isBanned);
 
-  const filtered = availableStrangers.filter(stranger => {
+  const getKarmaSortedStranger = (strangers: UserProfile[]) => {
+    if (!currentUser || !currentUser.karma) {
+      return strangers[Math.floor(Math.random() * strangers.length)];
+    }
+    strangers.sort((a, b) => {
+        const karmaA = a.karma || 0;
+        const karmaB = b.karma || 0;
+        const diffA = Math.abs(karmaA - (currentUser.karma || 0));
+        const diffB = Math.abs(karmaB - (currentUser.karma || 0));
+        return diffA - diffB;
+    });
+    const topMatches = strangers.slice(0, 3);
+    return topMatches[Math.floor(Math.random() * topMatches.length)];
+  };
+
+  const unblockedStrangers = availableStrangers.filter(s => 
+    !currentUser?.blockedUserIds?.includes(s.id) && !s.blockedUserIds?.includes(currentUser?.id || '')
+  );
+
+  const filtered = unblockedStrangers.filter(stranger => {
     const ageMatch =
       filters.minAge && filters.maxAge && stranger.age
         ? stranger.age >= filters.minAge && stranger.age <= filters.maxAge
@@ -64,19 +113,80 @@ export async function findStranger(
   });
 
   if (filtered.length > 0) {
-    const stranger = filtered[Math.floor(Math.random() * filtered.length)];
+    const stranger = getKarmaSortedStranger(filtered);
     return { stranger, match: true };
   }
   
-  const allAvailableStrangers = allStrangers.filter(s => s.id !== currentUserId);
+  const allAvailableStrangers = allStrangers.filter(s => s.id !== currentUserId && !s.isBanned);
 
-  // Fallback to any random online stranger if no filter match
-  if (availableStrangers.length > 0) {
-    const randomStranger = availableStrangers[Math.floor(Math.random() * availableStrangers.length)];
+  if (unblockedStrangers.length > 0) {
+    const randomStranger = getKarmaSortedStranger(unblockedStrangers);
     return { stranger: randomStranger, match: false };
   }
   
-  // Fallback to any random stranger if no one is online
   const randomStranger = allAvailableStrangers[Math.floor(Math.random() * allAvailableStrangers.length)];
   return { stranger: randomStranger || allStrangers[0], match: false };
+}
+
+export async function handleChatEnd(userId: string, strangerId: string, durationInSeconds: number) {
+    const user = allStrangers.find(u => u.id === userId);
+    const stranger = allStrangers.find(u => u.id === strangerId);
+
+    if (!user || !stranger) return;
+
+    if (durationInSeconds > 300) { // 5 minutes
+        updateKarma(userId, 5);
+        updateKarma(strangerId, 5);
+    } else if (durationInSeconds < 30) { // 30 seconds
+        updateKarma(userId, -2);
+    }
+}
+
+export async function updateKarma(userId: string, karmaChange: number): Promise<UserProfile | null> {
+    const user = allStrangers.find(u => u.id === userId);
+    if (user) {
+        user.karma = (user.karma || 0) + karmaChange;
+        return user;
+    }
+    return null;
+}
+
+export async function blockUser(userId: string, blockedUserId: string): Promise<UserProfile | null> {
+    const user = allStrangers.find(u => u.id === userId);
+    if (user) {
+        if (!user.blockedUserIds) {
+            user.blockedUserIds = [];
+        }
+        user.blockedUserIds.push(blockedUserId);
+        updateKarma(userId, 2);
+        updateKarma(blockedUserId, -15);
+        return user;
+    }
+    return null;
+}
+
+export async function reportUser(reporterId: string, reportedUserId: string): Promise<UserProfile | null> {
+    const user = allStrangers.find(u => u.id === reportedUserId);
+    if (user) {
+        user.reportedCount = (user.reportedCount || 0) + 1;
+        if (user.reportedCount > 5) { // Ban after 5 reports
+            user.isBanned = true;
+        }
+        updateKarma(reporterId, 5);
+        updateKarma(reportedUserId, -25);
+        return user;
+    }
+    return null;
+}
+
+export async function isBlocked(userId: string, strangerId: string): Promise<boolean> {
+    const user = allStrangers.find(u => u.id === userId);
+    const stranger = allStrangers.find(u => u.id === strangerId);
+    if (user && user.blockedUserIds?.includes(strangerId)) {
+        return true;
+    }
+    if (stranger && stranger.blockedUserIds?.includes(userId)) {
+        return true;
+    }
+    return false;
 }

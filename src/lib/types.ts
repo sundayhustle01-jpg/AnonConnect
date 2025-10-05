@@ -8,6 +8,10 @@ export type UserProfile = {
   location?: string;
   favoriteIds?: string[];
   online?: boolean;
+  karma?: number;
+  blockedUserIds?: string[];
+  reportedCount?: number;
+  isBanned?: boolean;
 };
 
 export type Message = {

@@ -4,11 +4,11 @@
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Loader2, Paperclip, Power, Send, Users, X, Star } from 'lucide-react';
+import { ArrowLeft, Loader2, Paperclip, Power, Send, Users, X, Star, MoreVertical, Shield, Flag, TrendingUp, Cake } from 'lucide-react';
 import Image from 'next/image';
 
 import type { Message, UserProfile, SearchFilters } from '@/lib/types';
-import { sendMessage, findStranger as findStrangerAction } from '@/app/actions';
+import { sendMessage, findStranger as findStrangerAction, blockUser, reportUser, handleChatEnd } from '@/app/actions';
 import { useUser } from '@/hooks/use-user';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -16,7 +16,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 
 const INACTIVITY_TIMEOUT = 2 * 60 * 1000; // 2 minutes
@@ -34,11 +36,21 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
   const [inputValue, setInputValue] = useState('');
   const [imageToSend, setImageToSend] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [chatStartTime, setChatStartTime] = useState<number>(Date.now());
+
+  const endChatSession = useCallback(() => {
+    if (user && stranger) {
+        const durationInSeconds = (Date.now() - chatStartTime) / 1000;
+        handleChatEnd(user.id, stranger.id, durationInSeconds);
+    }
+  }, [user, stranger, chatStartTime]);
 
   const startNewRandomChat = useCallback(async () => {
+    endChatSession();
     const { stranger: newStranger } = await findStrangerAction({}, user?.id);
     setStranger(newStranger);
     if (newStranger) {
@@ -46,8 +58,9 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
     }
     setMessages([]);
     setImageToSend(null);
+    setChatStartTime(Date.now());
     return newStranger;
-  }, [user?.id, addStrangerToHistory]);
+  }, [user?.id, addStrangerToHistory, endChatSession]);
 
   const handleNewChat = useCallback(async () => {
     const newStranger = await startNewRandomChat();
@@ -84,6 +97,7 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
     if(isLoaded && initialStranger) {
       setStranger(initialStranger);
       addStrangerToHistory(initialStranger);
+      setChatStartTime(Date.now());
 
       if (initialFilters) {
         const filters: SearchFilters = JSON.parse(initialFilters);
@@ -105,10 +119,15 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
     }
   }, [initialStranger, initialFilters, addStrangerToHistory, user?.id, toast, isLoaded]);
 
+  useEffect(() => {
+      return () => {
+          endChatSession();
+      };
+  }, [endChatSession]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isTyping]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -119,7 +138,6 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
       };
       reader.readAsDataURL(file);
     }
-    // Reset file input value to allow selecting the same file again
     if(event.target) {
         event.target.value = '';
     }
@@ -135,6 +153,22 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
           addFavorite(stranger.id);
           toast({ title: `${stranger.username} added to favorites.` });
       }
+  };
+  
+  const handleBlockUser = async () => {
+      if (!user || !stranger) return;
+      endChatSession();
+      await blockUser(user.id, stranger.id);
+      toast({ title: `${stranger.username} has been blocked. You will not be matched again.` });
+      handleNewChat();
+  };
+
+  const handleReportUser = async () => {
+      if (!user || !stranger) return;
+      endChatSession();
+      await reportUser(user.id, stranger.id);
+      toast({ title: `${stranger.username} has been reported.` });
+      handleNewChat();
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -160,9 +194,11 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
         setImageToSend(optimisticImage);
       } else {
         setMessages(prev => [...prev, result.userMessage]);
+        setIsTyping(true);
         setTimeout(() => {
-             setMessages(prev => [...prev, result.strangerMessage]);
-        }, 500);
+            setMessages(prev => [...prev, result.strangerMessage]);
+            setIsTyping(false);
+        }, 1000 + Math.random() * 1000); // Simulate typing delay
       }
     });
   };
@@ -186,14 +222,54 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <Avatar>
-            <AvatarImage src={stranger.avatar} alt={stranger.username} />
-            <AvatarFallback>{stranger.username.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-bold">{stranger.username}</p>
-            <p className={cn("text-xs", stranger.online ? "text-primary" : "text-muted-foreground")}>{stranger.online ? 'Online' : 'Offline'}</p>
-          </div>
+          <Dialog>
+            <DialogTrigger asChild>
+              <div className="flex items-center gap-3 cursor-pointer">
+                <Avatar>
+                  <AvatarImage src={stranger.avatar} alt={stranger.username} />
+                  <AvatarFallback>{stranger.username.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-bold">{stranger.username}</p>
+                  <p className={cn("text-xs", stranger.online ? "text-primary" : "text-muted-foreground")}>{stranger.online ? 'Online' : 'Offline'}</p>
+                </div>
+              </div>
+            </DialogTrigger>
+            <DialogContent>
+                <Card className="border-none">
+                    <CardHeader className="items-center text-center">
+                        <Avatar className="h-24 w-24 mb-4">
+                            <AvatarImage src={stranger.avatar} alt={stranger.username} />
+                            <AvatarFallback>{stranger.username.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <CardTitle className="text-2xl">{stranger.username}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-muted">
+                            <div className="flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-primary" />
+                                <span className="font-semibold">Karma</span>
+                            </div>
+                            <span className="font-bold text-lg text-primary">{stranger.karma ?? 0}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-muted">
+                             <div className="flex items-center gap-2">
+                                <Cake className="h-5 w-5 text-muted-foreground" />
+                                <span className="font-semibold">Age</span>
+                            </div>
+                            <span>{stranger.age ?? 'N/A'}</span>
+                        </div>
+                         <div className="flex items-center justify-between p-2 rounded-lg bg-muted">
+                             <div className="flex items-center gap-2">
+                                <Users className="h-5 w-5 text-muted-foreground" />
+                                <span className="font-semibold">Gender</span>
+                            </div>
+                            <span className="capitalize">{stranger.gender ?? 'N/A'}</span>
+                        </div>
+                    </CardContent>
+                </Card>
+            </DialogContent>
+          </Dialog>
         </div>
         <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={handleToggleFavorite} aria-label={isCurrentlyFavorite ? 'Remove from favorites' : 'Add to favorites'}>
@@ -203,6 +279,23 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
                 <Power className="mr-2 h-4 w-4 text-primary" />
                 New Chat
             </Button>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-5 w-5" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleBlockUser}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        Block
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleReportUser}>
+                        <Flag className="mr-2 h-4 w-4" />
+                        Report
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
       </header>
       
@@ -270,6 +363,7 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
                     </p>
                 </div>
             ))}
+            {isTyping && <TypingIndicator avatar={stranger.avatar} />}
              <div ref={messagesEndRef} />
         </div>
       </main>
@@ -320,4 +414,24 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
       </footer>
     </div>
   );
+}
+
+function TypingIndicator({ avatar }: { avatar: string }) {
+    return (
+        <div className={cn('flex w-full max-w-lg animate-message-in flex-col gap-1 mr-auto items-start')}>
+            <div className={cn('flex items-end gap-3')}>
+                <Avatar className="h-8 w-8">
+                    <AvatarImage src={avatar} />
+                    <AvatarFallback />
+                </Avatar>
+                <div className={cn('rounded-2xl px-4 py-2 text-sm md:text-base shadow-md rounded-bl-none bg-secondary text-secondary-foreground')}>
+                    <div className="flex items-center justify-center gap-1.5 h-6">
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.15s]" />
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }

@@ -12,6 +12,7 @@ export const allStrangers: UserProfile[] = [
         gender: 'male',
         location: 'USA',
         online: true,
+        karma: 50,
     },
     { 
         id: 'stranger-2',
@@ -21,6 +22,7 @@ export const allStrangers: UserProfile[] = [
         gender: 'female',
         location: 'Canada',
         online: true,
+        karma: 80,
     },
     { 
         id: 'stranger-3',
@@ -30,6 +32,7 @@ export const allStrangers: UserProfile[] = [
         gender: 'other',
         location: 'UK',
         online: false,
+        karma: 30,
     },
     { 
         id: 'stranger-4',
@@ -39,6 +42,7 @@ export const allStrangers: UserProfile[] = [
         gender: 'male',
         location: 'Australia',
         online: true,
+        karma: 90,
     },
     { 
         id: 'stranger-5',
@@ -48,6 +52,7 @@ export const allStrangers: UserProfile[] = [
         gender: 'female',
         location: 'USA',
         online: true,
+        karma: 70,
     },
     { 
         id: 'stranger-6',
@@ -57,6 +62,7 @@ export const allStrangers: UserProfile[] = [
         gender: 'male',
         location: 'Germany',
         online: false,
+        karma: 40,
     },
     { 
         id: 'stranger-7',
@@ -66,6 +72,7 @@ export const allStrangers: UserProfile[] = [
         gender: 'other',
         location: 'Japan',
         online: true,
+        karma: 100,
     },
     { 
         id: 'stranger-8',
@@ -75,5 +82,6 @@ export const allStrangers: UserProfile[] = [
         gender: 'female',
         location: 'UK',
         online: true,
+        karma: 60,
     },
 ];
