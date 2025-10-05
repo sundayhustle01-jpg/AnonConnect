@@ -1,171 +1,224 @@
-
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Loader2, MessageCircle, Pencil, Search, Settings, LogOut, Star } from 'lucide-react';
-import { AppHeader } from '@/components/features/AppHeader';
-import { ProfileSetup } from '@/components/features/ProfileSetup';
 import { Button } from '@/components/ui/button';
-import { useUser } from '@/hooks/use-user';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-} from '@/components/ui/dialog';
-import { SearchFilterDialog } from '@/components/features/SearchFilterDialog';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetDescription,
-  SheetClose,
-} from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
-import { ThemeToggle } from '@/components/features/ThemeToggle';
+import { AppHeader } from '@/components/features/AppHeader';
+import { Users, Lock, Zap, BeakerIcon, UserPlus, MessagesSquare, Heart, Twitter, Facebook, Share2, Linkedin } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useEffect, useState } from 'react';
 
-export default function HomePage() {
-  const { user, strangersHistory, isLoaded, logout } = useUser();
-  const [isClient, setIsClient] = useState(false);
+export default function LandingPage() {
+  const [canShare, setCanShare] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
+    if (navigator.share) {
+      setCanShare(true);
+    }
   }, []);
 
-  if (!isLoaded || !isClient) {
-    return (
-      <div className="flex min-h-screen flex-col bg-background">
-        <main className="flex flex-1 items-center justify-center">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        </main>
-      </div>
-    );
-  }
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'AnonConnect',
+        text: 'Join me on AnonConnect for anonymous conversations!',
+        url: window.location.href,
+      })
+        .then(() => console.log('Successful share'))
+        .catch((error) => console.log('Error sharing', error));
+    }
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <AppHeader user={user}>
-        {user?.username && (
-           <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Open settings">
-                <Settings className="h-5 w-5" />
+    <div className="flex flex-col min-h-screen bg-background">
+      <AppHeader />
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="w-full py-20 md:py-32 lg:py-40 bg-gradient-to-b from-background to-secondary/20">
+          <div className="container mx-auto px-4 md:px-6 text-center">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter mb-4 animate-fade-in-up">
+              Welcome to AnonConnect
+            </h1>
+            <p className="max-w-3xl mx-auto text-muted-foreground md:text-xl lg:text-2xl mb-8 animate-fade-in-up [animation-delay:0.2s]">
+              Connect with new people, share your thoughts, and explore new ideas—all with the safety of anonymity.
+            </p>
+            <Link href="/chat-app" passHref>
+              <Button size="lg" className="animate-fade-in-up [animation-delay:0.4s]">
+                Start Chatting Now
               </Button>
-            </SheetTrigger>
-            <SheetContent side="left">
-              <SheetHeader>
-                <SheetTitle>Settings</SheetTitle>
-                <SheetDescription>
-                  Update your preferences and profile.
-                </SheetDescription>
-              </SheetHeader>
-              <div className="py-4 space-y-4">
-                <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start">
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit Profile
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit Profile</DialogTitle>
-                        <DialogDescription>
-                          Update your profile information.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="max-h-[70vh] overflow-y-auto p-1">
-                        <ProfileSetup>
-                           <DialogClose asChild>
-                              <Button type="submit" className="w-full" size="lg">
-                                Save Profile
-                              </Button>
-                            </DialogClose>
-                        </ProfileSetup>
-                    </div>
-                    </DialogContent>
-                </Dialog>
-                 <SearchFilterDialog>
-                  <Button variant="outline" className="w-full justify-start">
-                      <Search className="mr-2 h-4 w-4" />
-                      Filtered Search
-                  </Button>
-                 </SearchFilterDialog>
-                 <Separator />
-                 <ThemeToggle />
-                 <Separator />
-                  <SheetClose asChild>
-                    <Button variant="destructive" className="w-full justify-start" onClick={logout}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Log Out
-                    </Button>
-                  </SheetClose>
+            </Link>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section className="w-full py-20 md:py-32">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
+              <div className="flex flex-col items-center text-center p-6 rounded-lg transition-transform hover:scale-105 hover:bg-secondary/50">
+                <div className="p-4 bg-primary/10 rounded-full mb-4">
+                  <Users className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Connect Instantly</h3>
+                <p className="text-muted-foreground">
+                  No sign-ups, no profiles. Jump straight into a conversation with a random stranger from our global community.
+                </p>
               </div>
-            </SheetContent>
-          </Sheet>
-        )}
-      </AppHeader>
-      <main className="container mx-auto flex flex-1 flex-col items-center justify-center p-4">
-        {user?.username ? (
-          <div className="flex flex-col items-center gap-4 animate-fade-in w-full max-w-xl">
-             <div className="grid grid-cols-1 md:grid-cols-2 w-full gap-2">
-              <Button asChild size="lg" className="w-full font-bold shadow-lg shadow-primary/20">
-                <Link href="/chat">
-                  Start Random Chat
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="w-full font-bold">
-                 <Link href="/favorites">
-                    <Star className="mr-2 h-5 w-5" />
-                    Favorites
-                </Link>
-              </Button>
+              <div className="flex flex-col items-center text-center p-6 rounded-lg transition-transform hover:scale-105 hover:bg-secondary/50">
+                <div className="p-4 bg-primary/10 rounded-full mb-4">
+                  <Lock className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Completely Anonymous</h3>
+                <p className="text-muted-foreground">
+                  Your privacy is our priority. Chats are not stored, and your identity is always protected.
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center p-6 rounded-lg transition-transform hover:scale-105 hover:bg-secondary/50">
+                <div className="p-4 bg-primary/10 rounded-full mb-4">
+                  <Zap className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Fast & Seamless</h3>
+                <p className="text-muted-foreground">
+                  Enjoy a smooth and responsive chat experience, designed to keep the conversation flowing without interruptions.
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center p-6 rounded-lg transition-transform hover:scale-105 hover:bg-secondary/50">
+                <div className="p-4 bg-primary/10 rounded-full mb-4">
+                  <BeakerIcon className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Cutting-Edge Features</h3>
+                <p className="text-muted-foreground">
+                  We use Firebase for A/B testing and staged rollouts, so you get to try our newest features first.
+                </p>
+              </div>
             </div>
-            
-            {strangersHistory && strangersHistory.length > 0 && (
-              <Card className="mt-8 w-full animate-fade-in-up">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MessageCircle className="text-primary"/>
-                    Recent Conversations
-                  </CardTitle>
-                  <CardDescription>People you have recently chatted with.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-1">
-                    {strangersHistory.map((stranger) => (
-                        <Link key={stranger.id} href={`/chat?stranger=${encodeURIComponent(JSON.stringify(stranger))}`} className="block rounded-lg hover:bg-secondary/50 transition-colors">
-                            <div className="flex items-center gap-4 p-3">
-                                <Avatar className="h-12 w-12">
-                                    <AvatarImage src={stranger.avatar} alt={stranger.username} />
-                                    <AvatarFallback>{stranger.username.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div className='text-left'>
-                                    <p className="font-bold text-md">{stranger.username}</p>
-                                </div>
-                            </div>
-                        </Link>
-                    ))}
-                </CardContent>
-              </Card>
+          </div>
+        </section>
+
+        {/* How It Works Section */}
+        <section className="w-full py-20 md:py-32 bg-secondary/20">
+          <div className="container mx-auto px-4 md:px-6">
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
+              Get Started in Seconds
+            </h2>
+            <div className="grid gap-12 md:grid-cols-3">
+              <div className="flex flex-col items-center text-center">
+                <div className="p-4 bg-primary/10 rounded-full mb-4">
+                  <UserPlus className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">1. Create Your Profile</h3>
+                <p className="text-muted-foreground">
+                  Choose a username and an avatar to get started. No personal information required.
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <div className="p-4 bg-primary/10 rounded-full mb-4">
+                  <MessagesSquare className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">2. Start a Chat</h3>
+                <p className="text-muted-foreground">
+                  Click "Start Chatting" to be instantly connected with a random user from around the world.
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <div className="p-4 bg-primary/10 rounded-full mb-4">
+                  <Heart className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">3. Connect & Share</h3>
+                <p className="text-muted-foreground">
+                  Enjoy an anonymous conversation. If you like who you're talking to, add them to your favorites.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ Section */}
+        <section className="w-full py-20 md:py-32">
+          <div className="container mx-auto px-4 md:px-6">
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
+              Frequently Asked Questions
+            </h2>
+            <Accordion type="single" collapsible className="w-full max-w-3xl mx-auto">
+              <AccordionItem value="item-1">
+                <AccordionTrigger>Is AnonConnect really anonymous?</AccordionTrigger>
+                <AccordionContent>
+                  Yes, your privacy is our top priority. We do not require any personal information to sign up, and your conversations are not stored on our servers. You can chat with confidence, knowing your identity is protected.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-2">
+                <AccordionTrigger>Can I reconnect with someone I enjoyed talking to?</AccordionTrigger>
+                <AccordionContent>
+                  Absolutely! If you have a great conversation, you can add the user to your favorites. This allows you to start a new chat with them directly from your favorites list, as long as they are online.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-3">
+                <AccordionTrigger>How are users matched?</AccordionTrigger>
+                <AccordionContent>
+                  Our system matches users randomly to encourage spontaneous connections. However, we also offer a filtered search option that allows you to find partners based on shared interests, creating more meaningful conversations.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-4">
+                <AccordionTrigger>Is there a mobile app available?</AccordionTrigger>
+                <AccordionContent>
+                  Currently, AnonConnect is available as a web application that is fully responsive and works seamlessly on all devices. A native mobile app is on our roadmap, so stay tuned for future updates!
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        </section>
+
+        {/* Share Section */}
+        <section className="w-full py-20 md:py-32 bg-secondary/20">
+          <div className="container mx-auto px-4 md:px-6 text-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              Share the Fun!
+            </h2>
+            <p className="max-w-2xl mx-auto text-muted-foreground md:text-xl mb-8">
+              Enjoying AnonConnect? Share it with your friends and let them join the conversation.
+            </p>
+            {canShare ? (
+              <Button onClick={handleShare}>
+                <Share2 className="mr-2 h-5 w-5" />
+                Share
+              </Button>
+            ) : (
+              <div className="flex justify-center gap-4 flex-wrap">
+                <Button asChild variant="outline">
+                  <a href="https://twitter.com/intent/tweet?text=Join%20me%20on%20AnonConnect%20for%20anonymous%20conversations!%20&url=https://your-app-url.com" target="_blank" rel="noopener noreferrer">
+                    <Twitter className="mr-2 h-5 w-5" />
+                    Twitter
+                  </a>
+                </Button>
+                <Button asChild variant="outline">
+                  <a href="https://www.facebook.com/sharer/sharer.php?u=https://your-app-url.com" target="_blank" rel="noopener noreferrer">
+                    <Facebook className="mr-2 h-5 w-5" />
+                    Facebook
+                  </a>
+                </Button>
+                <Button asChild variant="outline">
+                  <a href="https://api.whatsapp.com/send?text=Join%20me%20on%20AnonConnect%20for%20anonymous%20conversations!%20https://your-app-url.com" target="_blank" rel="noopener noreferrer">
+                    <Share2 className="mr-2 h-5 w-5" />
+                    WhatsApp
+                  </a>
+                </Button>
+                <Button asChild variant="outline">
+                  <a href="https://www.linkedin.com/shareArticle?mini=true&url=https://your-app-url.com&title=Join%20me%20on%20AnonConnect!&summary=Join%20me%20on%20AnonConnect%20for%20anonymous%20conversations!" target="_blank" rel="noopener noreferrer">
+                    <Linkedin className="mr-2 h-5 w-5" />
+                    LinkedIn
+                  </a>
+                </Button>
+              </div>
             )}
           </div>
-        ) : (
-          <ProfileSetup>
-             <Button type="submit" className="w-full" size="lg">
-                Save Profile & Start
-              </Button>
-          </ProfileSetup>
-        )}
+        </section>
+
       </main>
+
+      {/* Footer */}
+      <footer className="w-full py-6 bg-secondary/50">
+        <div className="container mx-auto px-4 md:px-6 text-center text-muted-foreground">
+          <p>&copy; {new Date().getFullYear()} AnonConnect. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 }
