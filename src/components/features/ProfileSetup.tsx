@@ -1,10 +1,9 @@
 'use client';
 
-import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser } from '@/hooks/use-user';
@@ -14,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
-import { User, Users, Upload } from 'lucide-react';
+import { User, Users } from 'lucide-react';
 import type { UserProfile } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
@@ -36,7 +35,7 @@ const dummyUsers: Omit<UserProfile, 'id'>[] = [
 
 const profileSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters.').max(20, 'Username must be 20 characters or less.'),
-  avatar: z.string().url('Please select an avatar.'),
+  avatar: z.string(),
   age: z.coerce.number().min(13, 'You must be at least 13 years old.').max(120, 'Age seems unlikely.').optional().or(z.literal('')),
   gender: z.enum(['male', 'female', 'other', 'prefer-not-to-say']).optional(),
   location: z.string().max(50, 'Location can be up to 50 characters.').optional(),
@@ -47,9 +46,9 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 export function ProfileSetup({ children }: { children: React.ReactNode }) {
   const { user, updateUser } = useUser();
   const [isEditing, setIsEditing] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [customAvatar, setCustomAvatar] = useState<string | null>(null);
+  const [showAllAvatars, setShowAllAvatars] = useState(false);
   const router = useRouter();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -65,8 +64,8 @@ export function ProfileSetup({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user) {
       setIsEditing(!!user.username);
-      if (user.avatar && !userAvatars.some(a => a.imageUrl === user.avatar)) {
-        setCustomAvatar(user.avatar);
+      if (user.avatar && userAvatars.findIndex(a => a.imageUrl === user.avatar) >= 4) {
+        setShowAllAvatars(true);
       }
       form.reset({
         username: user.username || '',
@@ -79,14 +78,18 @@ export function ProfileSetup({ children }: { children: React.ReactNode }) {
   }, [user, form]);
 
   function onSubmit(data: ProfileFormValues) {
-    const wasEditing = isEditing;
-    const profileData: Partial<UserProfile> = {
-      ...data,
-      age: data.age ? Number(data.age) : undefined,
-    };
-    updateUser(profileData);
+    if (selectedFile) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const avatar = e.target?.result as string;
+        updateUser({ ...data, avatar });
+      };
+      reader.readAsDataURL(selectedFile);
+    } else {
+      updateUser(data);
+    }
 
-    if (!wasEditing) {
+    if (!isEditing) {
       router.push('/chat');
     }
   }
@@ -95,22 +98,10 @@ export function ProfileSetup({ children }: { children: React.ReactNode }) {
     const selectedUser = dummyUsers.find(u => u.username === username);
     if (selectedUser) {
       form.reset(selectedUser);
-      setCustomAvatar(null);
     }
   };
-  
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        setCustomAvatar(dataUrl);
-        form.setValue('avatar', dataUrl, { shouldValidate: true });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+
+  const avatarsToShow = showAllAvatars ? userAvatars : userAvatars.slice(0, 4);
 
   return (
     <Card className={cn("w-full max-w-md", !isEditing && "animate-fade-in-up")}>
@@ -172,77 +163,45 @@ export function ProfileSetup({ children }: { children: React.ReactNode }) {
                   <FormLabel>Choose your avatar</FormLabel>
                   <FormControl>
                     <RadioGroup
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        if (userAvatars.some(a => a.imageUrl === value)) {
-                          setCustomAvatar(null);
-                        }
-                      }}
+                      onValueChange={field.onChange}
                       value={field.value}
                       className="grid grid-cols-4 gap-4"
                     >
-                      {userAvatars.map(avatar => (
+                      {avatarsToShow.map(avatar => (
                         <FormItem key={avatar.id} className="flex items-center justify-center">
                           <FormControl>
                             <RadioGroupItem value={avatar.imageUrl} className="sr-only" aria-label={`Avatar ${avatar.id}`} />
                           </FormControl>
                           <FormLabel
                             className={cn(
-                              'cursor-pointer rounded-full border-2 p-1 transition-all',
+                              'flex items-center justify-center cursor-pointer rounded-full border-2 text-4xl p-1 w-16 h-16 transition-all',
                               field.value === avatar.imageUrl ? 'border-primary' : 'border-transparent hover:border-primary/50'
                             )}
                           >
-                            <Image
-                              src={avatar.imageUrl}
-                              alt={avatar.description}
-                              width={64}
-                              height={64}
-                              className="rounded-full"
-                              data-ai-hint={avatar.imageHint}
-                            />
+                            {avatar.imageUrl}
                           </FormLabel>
                         </FormItem>
                       ))}
-                      {customAvatar && (
-                        <FormItem className="flex items-center justify-center">
-                          <FormControl>
-                            <RadioGroupItem value={customAvatar} className="sr-only" aria-label="Custom avatar" />
-                          </FormControl>
-                          <FormLabel
-                            className={cn(
-                              'cursor-pointer rounded-full border-2 p-1 transition-all',
-                              field.value === customAvatar ? 'border-primary' : 'border-transparent hover:border-primary/50'
-                            )}
-                          >
-                            <Image
-                              src={customAvatar}
-                              alt="Custom avatar"
-                              width={64}
-                              height={64}
-                              className="rounded-full object-cover"
-                            />
-                          </FormLabel>
-                        </FormItem>
-                      )}
                     </RadioGroup>
                   </FormControl>
+                  {!showAllAvatars && userAvatars.length > 4 && (
+                    <Button variant="link" type="button" onClick={() => setShowAllAvatars(true)} className="p-0 h-auto">
+                      More...
+                    </Button>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
             />
             
-            <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
-              <Upload className="mr-2 h-4 w-4" />
-              Upload Photo
-            </Button>
-            <Input 
-              type="file" 
-              className="hidden" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              accept="image/png, image/jpeg, image/gif"
-            />
-            
+            <FormItem>
+              <FormLabel>Upload your own</FormLabel>
+              <FormControl>
+                <Input type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+
              <FormField
               control={form.control}
               name="username"

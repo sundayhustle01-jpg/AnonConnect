@@ -217,8 +217,8 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
     <div className="flex h-screen flex-col">
       <header className="flex shrink-0 items-center justify-between border-b bg-background/80 p-3 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild aria-label="Back to home">
-            <Link href="/">
+          <Button variant="ghost" size="icon" asChild aria-label="Back to recent conversations">
+            <Link href="/chat-app">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
@@ -238,10 +238,23 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
             <DialogContent>
                 <Card className="border-none">
                     <CardHeader className="items-center text-center">
-                        <Avatar className="h-24 w-24 mb-4">
-                            <AvatarImage src={stranger.avatar} alt={stranger.username} />
-                            <AvatarFallback>{stranger.username.charAt(0)}</AvatarFallback>
-                        </Avatar>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Avatar className="h-24 w-24 mb-4 cursor-pointer">
+                                <AvatarImage src={stranger.avatar} alt={stranger.username} />
+                                <AvatarFallback>{stranger.username.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl p-0">
+                               <Image 
+                                src={stranger.avatar} 
+                                alt={stranger.username} 
+                                width={1000} 
+                                height={800} 
+                                className="w-full h-auto object-contain rounded-lg"
+                              />
+                            </DialogContent>
+                        </Dialog>
                         <CardTitle className="text-2xl">{stranger.username}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">

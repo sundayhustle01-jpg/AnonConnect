@@ -12,6 +12,7 @@ const APP_DESCRIPTION = 'Chat with random strangers anonymously and make new fri
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
 
 export const metadata: Metadata = {
+  manifest: '/manifest.json',
   title: {
     default: APP_NAME,
     template: `%s | ${APP_NAME}`,

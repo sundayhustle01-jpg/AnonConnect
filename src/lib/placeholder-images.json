@@ -3,26 +3,50 @@
     {
       "id": "avatar1",
       "description": "User avatar option 1",
-      "imageUrl": "https://images.unsplash.com/photo-1587592237406-57f41d3139e8?w=1080&q=80",
-      "imageHint": "abstract portrait"
+      "imageUrl": "🤠",
+      "imageHint": "cowboy emoji"
     },
     {
       "id": "avatar2",
       "description": "User avatar option 2",
-      "imageUrl": "https://images.unsplash.com/photo-1642776187128-d1d60e3b0754?w=1080&q=80",
-      "imageHint": "abstract portrait"
+      "imageUrl": "🤖",
+      "imageHint": "robot emoji"
     },
     {
       "id": "avatar3",
       "description": "User avatar option 3",
-      "imageUrl": "https://images.unsplash.com/photo-1622564045913-6241fcce67e4?w=1080&q=80",
-      "imageHint": "abstract portrait"
+      "imageUrl": "👽",
+      "imageHint": "alien emoji"
     },
     {
       "id": "avatar4",
       "description": "User avatar option 4",
-      "imageUrl": "https://images.unsplash.com/photo-1587592237406-57f41d3139e8?w=1080&q=80",
-      "imageHint": "abstract portrait"
+      "imageUrl": "🦄",
+      "imageHint": "unicorn emoji"
+    },
+    {
+      "id": "avatar5",
+      "description": "User avatar option 5",
+      "imageUrl": "👨‍🚀",
+      "imageHint": "astronaut emoji"
+    },
+    {
+      "id": "avatar6",
+      "description": "User avatar option 6",
+      "imageUrl": "🧙",
+      "imageHint": "wizard emoji"
+    },
+    {
+      "id": "avatar7",
+      "description": "User avatar option 7",
+      "imageUrl": "🧛",
+      "imageHint": "vampire emoji"
+    },
+    {
+      "id": "avatar8",
+      "description": "User avatar option 8",
+      "imageUrl": "🧟",
+      "imageHint": "zombie emoji"
     },
     {
       "id": "stranger1",

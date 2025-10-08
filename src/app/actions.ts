@@ -1,23 +1,15 @@
 'use server';
 
-import type { Message, SearchFilters, UserProfile } from '@/lib/types';
+import type { UserProfile, Message, SearchFilters } from '@/lib/types';
 import { allStrangers } from '@/lib/strangers';
 
+import type { Message, SearchFilters, UserProfile } from '@/lib/types';
+
 const randomReplies = [
-  "That's interesting!",
-  "Tell me more.",
-  "I see.",
-  "Hmm, what do you mean by that?",
-  "Could you elaborate?",
-  "I'm not sure I understand. Can you explain it differently?",
-  "Wow, really?",
-  "That's cool.",
-  "Got it.",
-  "Why do you say that?",
-  "What makes you think that?",
-  "I've never thought about it that way before.",
-  "That's a good point.",
-  "I'm not so sure about that.",
+  "That's interesting!", "Tell me more.", "I see.", "Hmm, what do you mean by that?",
+  "Could you elaborate?", "I'm not sure I understand. Can you explain it differently?",
+  "Wow, really?", "That's cool.", "Got it.", "Why do you say that?",
+  "What makes you think that?", "I've never thought about it that way before.", "That's a good point.", "I'm not so sure about that.",
   "Can you give me an example?",
 ];
 
@@ -26,9 +18,10 @@ const imageReplies = [
     "Cool image!",
     "What's this a picture of?",
     "I like this picture.",
-    "Where was this taken?",
-    "This looks great!",
-];
+]
+
+// In-memory queue for users waiting for a chat
+const waitingQueue: string[] = [];
 
 export async function sendMessage(
   messageText: string,
@@ -70,11 +63,24 @@ export async function sendMessage(
   }
 }
 
+export async function joinQueue(userId: string): Promise<{ matchedUserId?: string }> {
+  if (waitingQueue.includes(userId)) {
+    return {}; // User is already in the queue
+  }
+
+  const matchedUserId = waitingQueue.shift(); // Get the first user from the queue
+  if (matchedUserId) {
+    return { matchedUserId }; // Return the matched user ID
+  }
+
+  waitingQueue.push(userId); // Add the current user to the queue
+  return {}; // No match found yet
+}
+
 export async function findStranger(
   filters: SearchFilters,
   currentUserId?: string
 ): Promise<{ stranger: UserProfile; match: boolean }> {
-  const currentUser = allStrangers.find(u => u.id === currentUserId);
   const availableStrangers = allStrangers.filter(s => s.id !== currentUserId && s.online && !s.isBanned);
 
   const getKarmaSortedStranger = (strangers: UserProfile[]) => {
@@ -92,6 +98,27 @@ export async function findStranger(
     return topMatches[Math.floor(Math.random() * topMatches.length)];
   };
 
+  const currentUser = allStrangers.find(u => u.id === currentUserId);
+
+  // 1. Check the queue for a waiting user
+  let matchedUserIdFromQueue: string | undefined;
+  if (waitingQueue.length > 0) {
+    // Find a suitable user in the queue considering filters (optional but good)
+    matchedUserIdFromQueue = waitingQueue.find(queueUserId => {
+      const queueUser = allStrangers.find(u => u.id === queueUserId);
+      if (!queueUser || queueUser.id === currentUserId) return false;
+
+      // Add filter checks here if needed (similar to the filtering below)
+      // For simplicity, we'll just check if the user is online and not banned
+      return queueUser.online && !queueUser.isBanned;
+    });
+
+    if (matchedUserIdFromQueue) {
+      waitingQueue.splice(waitingQueue.indexOf(matchedUserIdFromQueue), 1); // Remove from queue
+      const stranger = allStrangers.find(u => u.id === matchedUserIdFromQueue)!;
+      return { stranger, match: true }; // Matched from queue
+    }
+  }
   const unblockedStrangers = availableStrangers.filter(s => 
     !currentUser?.blockedUserIds?.includes(s.id) && !s.blockedUserIds?.includes(currentUser?.id || '')
   );

@@ -1,5 +1,5 @@
-# Firebase Studio
+# Soallink
 
-This is a NextJS starter in Firebase Studio.
+Welcome to Soallink, your new anonymous chat platform!
 
 To get started, take a look at src/app/page.tsx.
