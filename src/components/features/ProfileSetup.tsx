@@ -78,15 +78,20 @@ export function ProfileSetup({ children }: { children: React.ReactNode }) {
   }, [user, form]);
 
   function onSubmit(data: ProfileFormValues) {
+    const dataToUpdate = {
+      ...data,
+      age: data.age === '' ? undefined : data.age,
+    };
+
     if (selectedFile) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const avatar = e.target?.result as string;
-        updateUser({ ...data, avatar });
+        updateUser({ ...dataToUpdate, avatar });
       };
       reader.readAsDataURL(selectedFile);
     } else {
-      updateUser(data);
+      updateUser(dataToUpdate);
     }
 
     if (!isEditing) {

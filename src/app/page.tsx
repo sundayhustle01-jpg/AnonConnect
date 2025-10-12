@@ -26,16 +26,16 @@ export default function LandingPage() {
 
   useEffect(() => {
     setAppUrl(window.location.origin);
-    if (navigator.share) {
+    if ('share' in navigator) {
       setCanShare(true);
     }
   }, []);
 
   const handleShare = () => {
-    if (navigator.share) {
+    if ('share' in navigator) {
       navigator.share({
-        title: 'Soallink',
-        text: 'Join me on Soallink for anonymous conversations!',
+        title: 'CasualFriday',
+        text: 'Join me on CasualFriday for anonymous conversations!',
         url: appUrl,
       })
  .then(() => console.log('Successful share'))
@@ -51,10 +51,10 @@ export default function LandingPage() {
         <section className="w-full py-20 md:py-32 lg:py-40 bg-gradient-to-b from-background to-secondary/20">
           <div className="container mx-auto px-4 md:px-6 text-center">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter mb-4 animate-fade-in-up">
-              Soallink - Start Random Chat Instantly
+              CasualFriday - Start Random Chat Instantly
             </h1>
             <p className="max-w-3xl mx-auto text-muted-foreground md:text-xl lg:text-2xl mb-8 animate-fade-in-up [animation-delay:0.2s]">
-              Connect with new people, talk to strangers, and explore new ideas with the safety of anonymous chat. Start a random chat now on Soallink!
+              Connect with new people, talk to strangers, and explore new ideas with the safety of anonymous chat. Start a random chat now on CasualFriday!
             </p>
             <Link href="/chat-app" passHref>
               <Button size="lg" className="animate-fade-in-up [animation-delay:0.4s]">
@@ -146,6 +146,35 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Testimonials Section */}
+        <section className="w-full py-20 md:py-32">
+          <div className="container mx-auto px-4 md:px-6">
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
+              What Our Users Are Saying
+            </h2>
+            <div className="grid gap-12 md:grid-cols-3">
+              <div className="bg-secondary/50 p-6 rounded-lg text-center">
+                <p className="text-muted-foreground mb-4">
+                  “I love how easy it is to start a random chat on CasualFriday. It's a great way to meet new people and have interesting conversations with strangers.”
+                </p>
+                <p className="font-semibold">- Stranger 1</p>
+              </div>
+              <div className="bg-secondary/50 p-6 rounded-lg text-center">
+                <p className="text-muted-foreground mb-4">
+                  “The anonymity gives me the freedom to be myself. I've had some of the most genuine conversations here. Highly recommend for anyone who likes to talk to strangers.”
+                </p>
+                <p className="font-semibold">- Stranger 2</p>
+              </div>
+              <div className="bg-secondary/50 p-6 rounded-lg text-center">
+                <p className="text-muted-foreground mb-4">
+                  “CasualFriday is my go-to for a fun, spontaneous chat. It’s safe, secure, and the community is great. A fantastic random chat platform.”
+                </p>
+                <p className="font-semibold">- Stranger 3</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* FAQ Section */}
         <section className="w-full py-20 md:py-32">
           <div className="container mx-auto px-4 md:px-6">
@@ -154,7 +183,7 @@ export default function LandingPage() {
             </h2>
             <Accordion type="single" collapsible className="w-full max-w-3xl mx-auto">
               <AccordionItem value="item-1">
-                <AccordionTrigger>Is Soallink really anonymous?</AccordionTrigger>
+                <AccordionTrigger>Is CasualFriday really anonymous?</AccordionTrigger>
                 <AccordionContent>
                   Yes, your privacy is our top priority. We do not require any personal information to sign up, and your conversations are not stored on our servers. You can chat with confidence, knowing your identity is protected.
                 </AccordionContent>
@@ -174,11 +203,11 @@ export default function LandingPage() {
               <AccordionItem value="item-4">
                 <AccordionTrigger>Is there a mobile app available?</AccordionTrigger>
                 <AccordionContent>
-                  Currently, Soallink is available as a web application that is fully responsive and works seamlessly on all devices. A native mobile app is on our roadmap, so stay tuned for future updates!\n
+                  Currently, CasualFriday is available as a web application that is fully responsive and works seamlessly on all devices. A native mobile app is on our roadmap, so stay tuned for future updates!\n
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="item-5">
-                <AccordionTrigger>How does random chat work on Soallink?</AccordionTrigger>
+                <AccordionTrigger>How does random chat work on CasualFriday?</AccordionTrigger>
                 <AccordionContent>
                   Our random chat system instantly connects you with another available user from our community. Simply click "Start Chatting," and you'll be paired for a one-on-one conversation. It's a great way to meet new people anonymously!
                 </AccordionContent>
@@ -194,7 +223,7 @@ export default function LandingPage() {
               Share the Fun!
             </h2>
             <p className="max-w-2xl mx-auto text-muted-foreground md:text-xl mb-8">
-              Enjoying Soallink? Share it with your friends and let them join the conversation.
+              Enjoying CasualFriday? Share it with your friends and let them join the conversation.
             </p>
             {canShare ? (
               <Button onClick={handleShare}>
@@ -204,7 +233,7 @@ export default function LandingPage() {
             ) : (
               <div className="flex justify-center gap-4 flex-wrap">
                 <Button asChild variant="outline">
-                  <a href={`https://twitter.com/intent/tweet?text=Join%20me%20on%20Soallink%20for%20anonymous%20conversations!%20&url=${appUrl}`} target="_blank" rel="noopener noreferrer">
+                  <a href={`https://twitter.com/intent/tweet?text=Join%20me%20on%20CasualFriday%20for%20anonymous%20conversations!%20&url=${appUrl}`} target="_blank" rel="noopener noreferrer">
                     <Twitter className="mr-2 h-5 w-5" />
                     Twitter
                   </a>
@@ -216,13 +245,13 @@ export default function LandingPage() {
                   </a>
                 </Button>
                 <Button asChild variant="outline">
-                  <a href={`https://api.whatsapp.com/send?text=Join%20me%20on%20Soallink%20for%20anonymous%20conversations!%20${appUrl}`} target="_blank" rel="noopener noreferrer">
+                  <a href={`https://api.whatsapp.com/send?text=Join%20me%20on%20CasualFriday%20for%20anonymous%20conversations!%20${appUrl}`} target="_blank" rel="noopener noreferrer">
  <Share2 className="mr-2 h-5 w-5" />
                     WhatsApp
                   </a>
                 </Button>
                 <Button asChild variant="outline">
-                  <a href={`https://www.linkedin.com/shareArticle?mini=true&url=${appUrl}&title=Join%20me%20on%20Soallink!&summary=Join%20me%20on%20Soallink%20for%20anonymous%20conversations!`} target="_blank" rel="noopener noreferrer">
+                  <a href={`https://www.linkedin.com/shareArticle?mini=true&url=${appUrl}&title=Join%20me%20on%20CasualFriday!&summary=Join%20me%20on%20CasualFriday%20for%20anonymous%20conversations!`} target="_blank" rel="noopener noreferrer">
                     <Linkedin className="mr-2 h-5 w-5" />
                     LinkedIn
                   </a>
@@ -237,7 +266,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="w-full py-6 bg-secondary/50">
         <div className="container mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center justify-between text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Soallink. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} CasualFriday. All rights reserved.</p>
           <div className="flex gap-4 mt-4 md:mt-0">
             <Link href="/terms" className="hover:text-primary">Terms of Service</Link>
             <Link href="/privacy" className="hover:text-primary">Privacy Policy</Link>

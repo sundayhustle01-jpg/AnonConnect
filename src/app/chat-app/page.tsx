@@ -52,7 +52,7 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <AppHeader user={user}>
+      <AppHeader>
         {user?.username && (
            <Sheet>
             <SheetTrigger asChild>

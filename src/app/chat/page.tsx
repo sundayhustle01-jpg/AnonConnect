@@ -35,11 +35,7 @@ async function getInitialStranger(
 // We can't get user from useUser hook on the server, so we'll pass initial data down.
 // This example doesn't have real auth, so we pass undefined for the userId.
 // In a real app, you'd get the session here.
-export default async function ChatPage({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined };
-}) {
+export default async function ChatPage({ searchParams }: any) {
   const strangerParam =
     typeof searchParams.stranger === 'string' ? searchParams.stranger : null;
   const filtersParam =

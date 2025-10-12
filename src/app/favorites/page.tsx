@@ -28,7 +28,7 @@ export default function FavoritesPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <AppHeader user={user}>
+      <AppHeader>
          <Button variant="ghost" size="icon" asChild aria-label="Back to chat">
             <Link href="/chat-app">
                 <ArrowLeft className="h-5 w-5" />

@@ -10,7 +10,7 @@ export default function PrivacyPolicyPage() {
         <h1 className="text-4xl font-bold mb-8">Privacy Policy</h1>
         <div className="prose prose-lg max-w-none">
           <p>
-            Your privacy is important to us. It is Soallink's policy to respect your privacy regarding any information we may collect from you across our website, and other sites we own and operate.
+            Your privacy is important to us. It is CasualFriday's policy to respect your privacy regarding any information we may collect from you across our website, and other sites we own and operate.
           </p>
           <p>
             We only ask for personal information when we truly need it to provide a service to you. We collect it by fair and lawful means, with your knowledge and consent. We also let you know why we’re collecting it and how it will be used.
@@ -35,7 +35,7 @@ export default function PrivacyPolicyPage() {
       </main>
       <footer className="w-full py-6 bg-secondary/50">
         <div className="container mx-auto px-4 md:px-6 text-center text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Soallink. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} CasualFriday. All rights reserved.</p>
         </div>
       </footer>
     </div>

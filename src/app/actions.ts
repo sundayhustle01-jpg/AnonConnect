@@ -3,8 +3,6 @@
 import type { UserProfile, Message, SearchFilters } from '@/lib/types';
 import { allStrangers } from '@/lib/strangers';
 
-import type { Message, SearchFilters, UserProfile } from '@/lib/types';
-
 const randomReplies = [
   "That's interesting!", "Tell me more.", "I see.", "Hmm, what do you mean by that?",
   "Could you elaborate?", "I'm not sure I understand. Can you explain it differently?",

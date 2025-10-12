@@ -13,7 +13,7 @@ export default function LandingPage() {
         <section className="w-full py-20 md:py-32 lg:py-40 bg-gradient-to-b from-background to-secondary/20">
           <div className="container mx-auto px-4 md:px-6 text-center">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter mb-4 animate-fade-in-up">
-              Welcome to AnonConnect
+              Welcome to CasualFriday
             </h1>
             <p className="max-w-3xl mx-auto text-muted-foreground md:text-xl lg:text-2xl mb-8 animate-fade-in-up [animation-delay:0.2s]">
               Connect with new people, share your thoughts, and explore new ideas—all with the safety of anonymity.
@@ -65,7 +65,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="w-full py-6 bg-secondary/50">
         <div className="container mx-auto px-4 md:px-6 text-center text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} AnonConnect. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} CasualFriday. All rights reserved.</p>
         </div>
       </footer>
     </div>
