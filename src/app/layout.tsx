@@ -21,6 +21,7 @@ export const metadata: Metadata = {
     icon: '/favicon.ico',
   },
   description: APP_DESCRIPTION,
+  keywords: ['random chat', 'anonymous chat', 'stranger chat', 'make friends', 'online chat'],
   applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
@@ -63,7 +64,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: '/',
+    canonical: APP_URL,
   },
 };
 

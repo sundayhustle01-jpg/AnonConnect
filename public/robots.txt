@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://casualfriday.co.in/sitemap.xml
