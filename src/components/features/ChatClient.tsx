@@ -3,12 +3,13 @@
 
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Loader2, Paperclip, Power, Send, Users, X, Star, MoreVertical, Shield, Flag, TrendingUp, Cake } from 'lucide-react';
 import Image from 'next/image';
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 import type { Message, UserProfile, SearchFilters } from '@/lib/types';
-import { sendMessage, findStranger as findStrangerAction, blockUser, reportUser, handleChatEnd } from '@/app/actions';
+import { findStranger as findStrangerAction, blockUser, reportUser, handleChatEnd } from '@/app/actions';
 import { useUser } from '@/hooks/use-user';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -16,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { db, storage } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -34,16 +36,20 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
   const [stranger, setStranger] = useState<UserProfile | null>(initialStranger);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const [imageToSend, setImageToSend] = useState<string | null>(null);
+  const [imageToSend, setImageToSend] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [chatStartTime, setChatStartTime] = useState<number>(Date.now());
 
+  const getChatRoomId = (userId1: string, userId2: string) => {
+    return [userId1, userId2].sort().join('_');
+  };
+
   const endChatSession = useCallback(() => {
-    if (user && stranger) {
+    if (user && stranger && stranger.id !== 'bot') {
         const durationInSeconds = (Date.now() - chatStartTime) / 1000;
         handleChatEnd(user.id, stranger.id, durationInSeconds);
     }
@@ -58,6 +64,7 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
     }
     setMessages([]);
     setImageToSend(null);
+    setImagePreview(null);
     setChatStartTime(Date.now());
     return newStranger;
   }, [user?.id, addStrangerToHistory, endChatSession]);
@@ -83,6 +90,24 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
       handleNewChat();
     }, INACTIVITY_TIMEOUT);
   }, [handleNewChat, toast]);
+
+  useEffect(() => {
+    if (!user || !stranger) return;
+
+    const chatRoomId = getChatRoomId(user.id, stranger.id);
+    const q = query(collection(db, 'chats', chatRoomId, 'messages'), orderBy('timestamp', 'asc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newMessages = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate() ?? new Date(),
+      })) as Message[];
+      setMessages(newMessages);
+    });
+
+    return () => unsubscribe();
+  }, [user, stranger]);
 
   useEffect(() => {
     resetInactivityTimer();
@@ -127,16 +152,13 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+  }, [messages]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageToSend(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setImageToSend(file);
+      setImagePreview(URL.createObjectURL(file));
     }
     if(event.target) {
         event.target.value = '';
@@ -156,7 +178,7 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
   };
   
   const handleBlockUser = async () => {
-      if (!user || !stranger) return;
+      if (!user || !stranger || stranger.id === 'bot') return;
       endChatSession();
       await blockUser(user.id, stranger.id);
       toast({ title: `${stranger.username} has been blocked. You will not be matched again.` });
@@ -164,7 +186,7 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
   };
 
   const handleReportUser = async () => {
-      if (!user || !stranger) return;
+      if (!user || !stranger || stranger.id === 'bot') return;
       endChatSession();
       await reportUser(user.id, stranger.id);
       toast({ title: `${stranger.username} has been reported.` });
@@ -175,30 +197,69 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
     e.preventDefault();
     if ((!inputValue.trim() && !imageToSend) || !user || !stranger) return;
     
+    if (stranger.id === 'bot') {
+        toast({
+            variant: 'destructive',
+            title: 'This is a bot',
+            description: 'You cannot chat with the bot. Please start a new chat to talk to a real user.',
+        });
+        return;
+    }
+
     resetInactivityTimer();
 
-    const optimisticInput = inputValue;
-    const optimisticImage = imageToSend;
+    const localInputValue = inputValue;
+    const localImageToSend = imageToSend;
+
     setInputValue('');
     setImageToSend(null);
+    setImagePreview(null);
 
     startTransition(async () => {
-      const result = await sendMessage(optimisticInput, user.avatar, stranger.avatar, optimisticImage ?? undefined);
-      if ('error' in result) {
+      try {
+        let imageUrl: string | null = null;
+        if (localImageToSend) {
+          const storageRef = ref(storage, `chat_images/${Date.now()}_${localImageToSend.name}`);
+          const uploadTask = uploadBytesResumable(storageRef, localImageToSend);
+          
+          await new Promise<void>((resolve, reject) => {
+            uploadTask.on('state_changed',
+              null, // no progress observer
+              (error) => {
+                console.error('Upload failed:', error);
+                reject(error);
+              },
+              async () => {
+                imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve();
+              }
+            );
+          });
+        }
+
+        const chatRoomId = getChatRoomId(user.id, stranger.id);
+        const messageData = {
+            text: localInputValue,
+            senderId: user.id,
+            avatar: user.avatar,
+            timestamp: serverTimestamp(),
+            image: imageUrl,
+        };
+
+        await addDoc(collection(db, 'chats', chatRoomId, 'messages'), messageData);
+      } catch (error) {
+        console.error('Error sending message: ', error);
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: result.error,
+          description: 'Failed to send message.',
         });
-        setInputValue(optimisticInput);
-        setImageToSend(optimisticImage);
-      } else {
-        setMessages(prev => [...prev, result.userMessage]);
-        setIsTyping(true);
-        setTimeout(() => {
-            setMessages(prev => [...prev, result.strangerMessage]);
-            setIsTyping(false);
-        }, 1000 + Math.random() * 1000); // Simulate typing delay
+        // Optionally, restore input values
+        setInputValue(localInputValue);
+        setImageToSend(localImageToSend);
+        if (localImageToSend) {
+          setImagePreview(URL.createObjectURL(localImageToSend));
+        }
       }
     });
   };
@@ -285,7 +346,7 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
           </Dialog>
         </div>
         <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={handleToggleFavorite} aria-label={isCurrentlyFavorite ? 'Remove from favorites' : 'Add to favorites'}>
+            <Button variant="ghost" size="icon" onClick={handleToggleFavorite} aria-label={isCurrentlyFavorite ? 'Remove from favorites' : 'Add to favorites'} disabled={stranger.id === 'bot'}>
                 <Star className={cn("h-5 w-5", isCurrentlyFavorite ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
             </Button>
             <Button variant="outline" size="sm" onClick={handleNewChat} aria-label="Start new chat">
@@ -294,7 +355,7 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
             </Button>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" disabled={stranger.id === 'bot'}>
                         <MoreVertical className="h-5 w-5" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -326,18 +387,18 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
                     key={message.id}
                     className={cn(
                         'flex w-full max-w-lg animate-message-in flex-col gap-1',
-                        message.sender === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'
+                        message.senderId === user.id ? 'ml-auto items-end' : 'mr-auto items-start'
                     )}
                 >
-                    <div className={cn('flex items-end gap-3', message.sender === 'user' && 'flex-row-reverse')}>
+                    <div className={cn('flex items-end gap-3', message.senderId === user.id && 'flex-row-reverse')}>
                         <Avatar className="h-8 w-8">
                             <AvatarImage src={message.avatar} />
-                            <AvatarFallback>{message.sender === 'user' ? user.username.charAt(0) : stranger.username.charAt(0)}</AvatarFallback>
+                            <AvatarFallback>{message.senderId === user.id ? user.username.charAt(0) : stranger.username.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div
                             className={cn(
                                 'rounded-2xl px-4 py-2 text-sm md:text-base shadow-md',
-                                message.sender === 'user'
+                                message.senderId === user.id
                                 ? 'rounded-br-none bg-primary text-primary-foreground'
                                 : 'rounded-bl-none bg-secondary text-secondary-foreground',
                                 message.image && 'p-2'
@@ -370,27 +431,26 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
                     </div>
                      <p className={cn(
                         "text-xs text-muted-foreground",
-                        message.sender === 'user' ? "pr-11" : "pl-11"
+                        message.senderId === user.id ? "pr-11" : "pl-11"
                      )}>
                         {format(new Date(message.timestamp), 'p')}
                     </p>
                 </div>
             ))}
-            {isTyping && <TypingIndicator avatar={stranger.avatar} />}
              <div ref={messagesEndRef} />
         </div>
       </main>
 
       <footer className="shrink-0 border-t bg-background p-4">
         <div className="mx-auto max-w-4xl">
-           {imageToSend && (
+           {imagePreview && (
             <div className="relative mb-2 w-28 h-28">
-              <Image src={imageToSend} alt="Preview" fill className="rounded-lg object-cover" />
+              <Image src={imagePreview} alt="Preview" fill className="rounded-lg object-cover" />
               <Button
                 variant="destructive"
                 size="icon"
                 className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                onClick={() => setImageToSend(null)}
+                onClick={() => {setImageToSend(null); setImagePreview(null);}}
                 aria-label="Remove image"
               >
                 <X className="h-4 w-4" />

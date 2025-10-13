@@ -1,31 +1,29 @@
-
 export type UserProfile = {
-  id: string;
-  username: string;
-  avatar: string;
-  age?: number;
-  gender?: 'male' | 'female' | 'other' | 'prefer-not-to-say';
-  location?: string;
-  favoriteIds?: string[];
-  online?: boolean;
-  karma?: number;
-  blockedUserIds?: string[];
-  reportedCount?: number;
-  isBanned?: boolean;
-};
-
-export type Message = {
-  id: string;
-  text: string;
-  image?: string; // New: optional image data URL
-  sender: 'user' | 'stranger';
-  timestamp: number;
-  avatar: string;
-};
-
-export type SearchFilters = {
-    minAge?: number;
-    maxAge?: number;
-    gender?: 'male' | 'female' | 'other' | 'any';
+    id: string;
+    username: string;
+    avatar: string;
+    online: boolean;
+    isSearching?: boolean;
+    isChatting?: boolean;
+    blocked?: string[];
+    karma?: number;
+    age?: number;
+    gender?: 'male' | 'female' | 'other' | 'prefer-not-to-say';
     location?: string;
-};
+    favoriteIds?: string[];
+  };
+  
+  export type Message = {
+    id: string;
+    text?: string;
+    image?: string;
+    senderId: string;
+    avatar: string;
+    timestamp: any;
+  };
+  
+  export type SearchFilters = {
+    gender?: string;
+    ageRange?: [number, number];
+  };
+  

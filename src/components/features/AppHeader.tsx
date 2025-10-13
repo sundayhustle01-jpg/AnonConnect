@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -27,7 +28,7 @@ export function AppHeader({ children }: AppHeaderProps) {
         <div className="flex items-center gap-2">
           {children}
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="CasualFriday" width={160} height={40} />
+            <Image src={`/logo.png?v=${new Date().getTime()}`} alt="CasualFriday" width={160} height={40} />
           </Link>
         </div>
         <div className="flex items-center gap-3">

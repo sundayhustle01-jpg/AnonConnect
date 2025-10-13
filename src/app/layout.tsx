@@ -7,7 +7,7 @@ import { ThemeProvider } from '@/components/providers/ThemeProvider';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
-const APP_NAME = 'AnonConnect';
+const APP_NAME = 'CasualFriday';
 const APP_DESCRIPTION = 'Chat with random strangers anonymously and make new friends from around the world. Filter by interests, age, and more.';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
 
@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: {
     default: APP_NAME,
     template: `%s | ${APP_NAME}`,
+  },
+  icons: {
+    icon: '/favicon.ico',
   },
   description: APP_DESCRIPTION,
   applicationName: APP_NAME,

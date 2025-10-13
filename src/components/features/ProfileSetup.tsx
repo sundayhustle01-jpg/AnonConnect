@@ -27,10 +27,10 @@ import {
 const userAvatars = PlaceHolderImages.filter(img => img.id.startsWith('avatar'));
 
 const dummyUsers: Omit<UserProfile, 'id'>[] = [
-  { username: 'AstroCat', avatar: userAvatars[0].imageUrl, age: 25, gender: 'male', location: 'USA' },
-  { username: 'PixelPilot', avatar: userAvatars[1].imageUrl, age: 30, gender: 'female', location: 'Canada' },
-  { username: 'SynthWaveRider', avatar: userAvatars[2].imageUrl, age: 22, gender: 'other', location: 'UK' },
-  { username: 'QuantumQuokka', avatar: userAvatars[3].imageUrl, age: 28, gender: 'prefer-not-to-say', location: 'Australia' },
+  { username: 'AstroCat', avatar: userAvatars[0].imageUrl, age: 25, gender: 'male', location: 'USA', online: true },
+  { username: 'PixelPilot', avatar: userAvatars[1].imageUrl, age: 30, gender: 'female', location: 'Canada', online: true },
+  { username: 'SynthWaveRider', avatar: userAvatars[2].imageUrl, age: 22, gender: 'other', location: 'UK', online: true },
+  { username: 'QuantumQuokka', avatar: userAvatars[3].imageUrl, age: 28, gender: 'prefer-not-to-say', location: 'Australia', online: true },
 ];
 
 const profileSchema = z.object({
@@ -71,7 +71,7 @@ export function ProfileSetup({ children }: { children: React.ReactNode }) {
         username: user.username || '',
         avatar: user.avatar || (userAvatars.length > 0 ? userAvatars[0].imageUrl : ''),
         age: user.age || '',
-        gender: user.gender || 'prefer-not-to-say',
+        gender: (user.gender as ProfileFormValues['gender']) || 'prefer-not-to-say',
         location: user.location || '',
       });
     }
