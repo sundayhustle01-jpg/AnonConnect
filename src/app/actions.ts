@@ -8,7 +8,7 @@ import type { SearchFilters, UserProfile } from '@/lib/types';
 const ACTIVE_USERS_COLLECTION = 'activeUsers';
 const USERS_COLLECTION = 'users';
 
-async function findStranger(filters: SearchFilters, userId?: string): Promise<{ stranger: UserProfile, match: boolean }> {
+async function findStranger(filters: SearchFilters, userId?: string): Promise<{ stranger: UserProfile | null, match: boolean }> {
     const activeUsers = await firestoreAdmin.collection(ACTIVE_USERS_COLLECTION).get();
     let availableUsers = activeUsers.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as UserProfile))
@@ -42,16 +42,7 @@ async function findStranger(filters: SearchFilters, userId?: string): Promise<{ 
         return { stranger, match };
     }
     
-    // Fallback: return a bot if no users are available
-    return {
-        stranger: {
-            id: 'bot',
-            username: 'CasualFriday Bot',
-            avatar: 'https://i.pravatar.cc/150?u=bot',
-            online: true,
-        },
-        match: false
-    };
+    return { stranger: null, match: false };
 }
 
 async function blockUser(userId: string, strangerId: string) {

@@ -26,7 +26,7 @@ import { format } from 'date-fns';
 const INACTIVITY_TIMEOUT = 2 * 60 * 1000; // 2 minutes
 
 type ChatClientProps = {
-    initialStranger: UserProfile;
+    initialStranger: UserProfile | null;
     initialFilters: string | null;
 }
 
@@ -71,10 +71,18 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
 
   const handleNewChat = useCallback(async () => {
     const newStranger = await startNewRandomChat();
-    toast({
-        title: 'Finding new chat...',
-        description: `You have been connected with ${newStranger.username}.`,
-    });
+    if (newStranger) {
+        toast({
+            title: 'Finding new chat...',
+            description: `You have been connected with ${newStranger.username}.`,
+        });
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'No users found',
+            description: 'No online users are available. Please try again later.',
+        });
+    }
   }, [startNewRandomChat, toast]);
   
   const resetInactivityTimer = useCallback(() => {
@@ -126,17 +134,26 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
 
       if (initialFilters) {
         const filters: SearchFilters = JSON.parse(initialFilters);
-        findStrangerAction(filters, user?.id).then(({ match }) => {
-            if (match) {
-                toast({
-                    title: 'Found a match!',
-                    description: `You have been connected with ${initialStranger.username}.`,
-                });
+        findStrangerAction(filters, user?.id).then(({ stranger, match }) => {
+            setStranger(stranger);
+            if (stranger) {
+                addStrangerToHistory(stranger);
+                if (match) {
+                    toast({
+                        title: 'Found a match!',
+                        description: `You have been connected with ${stranger.username}.`,
+                    });
+                } else {
+                    toast({
+                         title: 'No match found',
+                         description: "We couldn't find anyone with your criteria. Connecting you with a random user.",
+                    });
+                }
             } else {
-                toast({
-                     variant: 'destructive',
-                     title: 'No match found',
-                     description: "We couldn't find anyone with your criteria. Connecting you with a random user.",
+                 toast({
+                    variant: 'destructive',
+                    title: 'No users found',
+                    description: 'No online users are available. Please try again later.',
                 });
             }
         });
@@ -264,12 +281,23 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
     });
   };
 
-  if (!isLoaded || !user || !stranger) {
+  if (!isLoaded || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
+  }
+
+  if (!stranger) {
+      return (
+         <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
+            <Users className="h-16 w-16 mb-4 text-primary" />
+            <h2 className="text-2xl font-bold mb-2">No users found</h2>
+            <p className="text-muted-foreground mb-6">No online users are available. Please try again later.</p>
+            <Button onClick={handleNewChat}>Find Another Stranger</Button>
+        </div>
+      )
   }
   
   const isCurrentlyFavorite = isFavorite(stranger.id);
