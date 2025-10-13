@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -19,6 +18,7 @@ const createDefaultUser = (): UserProfile => ({
   gender: undefined,
   location: undefined,
   favoriteIds: [],
+  online: false,
 });
 
 const MAX_HISTORY_LENGTH = 5;
@@ -83,6 +83,7 @@ export function useUser() {
           gender: newProfileData.gender ?? prevUser?.gender,
           location: newProfileData.location ?? prevUser?.location,
           favoriteIds: newProfileData.favoriteIds ?? prevUser?.favoriteIds ?? [],
+          online: newProfileData.online ?? prevUser?.online ?? false,
       };
       try {
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
