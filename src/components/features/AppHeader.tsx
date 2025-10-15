@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Menu } from 'lucide-react';
+import { Menu, Lightbulb } from 'lucide-react';
 import type { UserProfile } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React from 'react';
@@ -15,6 +15,7 @@ import {
   DrawerHeader,
   DrawerTrigger,
 } from '@/components/ui/drawer';
+import { Button } from '@/components/ui/button';
 
 type AppHeaderProps = {
   children?: React.ReactNode;
@@ -43,18 +44,32 @@ export function AppHeader({ children }: AppHeaderProps) {
               </Avatar>
             </>
           )}
-          <div className="hidden sm:flex">
+          <div className="hidden sm:flex items-center gap-3">
+            <Button variant="ghost" asChild>
+                <Link href="/request-feature">
+                    <Lightbulb className="mr-2 h-4 w-4" />
+                    Request Feature
+                </Link>
+            </Button>
             <ThemeToggle />
           </div>
           <div className="sm:hidden">
             <Drawer>
-              <DrawerTrigger>
-                <Menu />
+              <DrawerTrigger asChild>
+                <Button variant="ghost" size="icon">
+                    <Menu />
+                </Button>
               </DrawerTrigger>
               <DrawerContent>
-                <DrawerHeader className="text-left">
-                  <ThemeToggle />
-                </DrawerHeader>
+                <div className="grid gap-4 p-4">
+                    <Link href="/request-feature">
+                        <Button variant="outline" className="w-full">
+                            <Lightbulb className="mr-2 h-4 w-4" />
+                            Request a Feature
+                        </Button>
+                    </Link>
+                    <ThemeToggle />
+                </div>
               </DrawerContent>
             </Drawer>
           </div>

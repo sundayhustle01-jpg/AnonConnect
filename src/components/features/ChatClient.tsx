@@ -290,14 +290,17 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
   }
 
   if (!stranger) {
-      return (
-         <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
-            <Users className="h-16 w-16 mb-4 text-primary" />
-            <h2 className="text-2xl font-bold mb-2">No users found</h2>
-            <p className="text-muted-foreground mb-6">No online users are available. Please try again later.</p>
-            <Button onClick={handleNewChat}>Find Another Stranger</Button>
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
+        <Users className="h-16 w-16 mb-4 text-primary" />
+        <h2 className="text-2xl font-bold mb-2">No users found</h2>
+        <p className="text-muted-foreground mb-6">No online users are available. Please try again later.</p>
+        <div className="flex gap-4">
+          <Button onClick={handleNewChat}>Find Another Stranger</Button>
+          <Button variant="outline" onClick={() => window.history.back()}>Go Back</Button>
         </div>
-      )
+      </div>
+    )
   }
   
   const isCurrentlyFavorite = isFavorite(stranger.id);

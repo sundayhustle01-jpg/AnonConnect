@@ -2,9 +2,16 @@
 import * as admin from 'firebase-admin';
 
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-  });
+  const serviceAccount = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+  if (serviceAccount) {
+    admin.initializeApp({
+      credential: admin.credential.cert(JSON.parse(serviceAccount)),
+    });
+  } else {
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+    });
+  }
 }
 
 const firestoreAdmin = admin.firestore();
