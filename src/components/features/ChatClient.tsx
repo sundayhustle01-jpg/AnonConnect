@@ -7,9 +7,11 @@ import { ArrowLeft, Loader2, Paperclip, Power, Send, Users, X, Star, MoreVertica
 import Image from 'next/image';
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import Pusher from 'pusher-js';
+import type { Channel, PresenceChannel } from 'pusher-js';
 
-import type { Message, UserProfile, SearchFilters } from '@/lib/types';
-import { findStranger as findStrangerAction, blockUser, reportUser, handleChatEnd } from '@/app/actions';
+import type { Message, UserProfile } from '@/lib/types';
+import { blockUser, reportUser, handleChatEnd } from '@/app/actions';
 import { useUser } from '@/hooks/use-user';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,16 +26,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { format } from 'date-fns';
 
 const INACTIVITY_TIMEOUT = 2 * 60 * 1000; // 2 minutes
+const WAITING_CHANNEL_NAME = 'presence-waiting-room';
 
 type ChatClientProps = {
-    initialStranger: UserProfile | null;
+    initialStranger: UserProfile | null; 
     initialFilters: string | null;
 }
 
-export function ChatClient({ initialStranger, initialFilters }: ChatClientProps) {
+export function ChatClient({ initialStranger: initialS, initialFilters }: ChatClientProps) {
   const { user, isLoaded, addStrangerToHistory, addFavorite, removeFavorite, isFavorite } = useUser();
   const { toast } = useToast();
-  const [stranger, setStranger] = useState<UserProfile | null>(initialStranger);
+  const [stranger, setStranger] = useState<UserProfile | null>(initialS);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [imageToSend, setImageToSend] = useState<File | null>(null);
@@ -42,65 +45,148 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [chatStartTime, setChatStartTime] = useState<number>(Date.now());
+  const [chatStartTime, setChatStartTime] = useState<number | null>(null);
 
-  const getChatRoomId = (userId1: string, userId2: string) => {
+  const [isSearching, setIsSearching] = useState(false);
+  const pusherRef = useRef<Pusher | null>(null);
+  const waitingChannelRef = useRef<PresenceChannel | null>(null);
+  const privateChannelRef = useRef<Channel | null>(null);
+
+  const getChatRoomId = useCallback((userId1: string, userId2: string) => {
     return [userId1, userId2].sort().join('_');
-  };
+  }, []);
 
-  const endChatSession = useCallback(() => {
-    if (user && stranger && stranger.id !== 'bot') {
+  const endChatSession = useCallback((notify: boolean = true) => {
+    if (user && stranger && stranger.id !== 'bot' && chatStartTime) {
         const durationInSeconds = (Date.now() - chatStartTime) / 1000;
         handleChatEnd(user.id, stranger.id, durationInSeconds);
     }
-  }, [user, stranger, chatStartTime]);
-
-  const startNewRandomChat = useCallback(async () => {
-    endChatSession();
-    const { stranger: newStranger } = await findStrangerAction({}, user?.id);
-    setStranger(newStranger);
-    if (newStranger) {
-      addStrangerToHistory(newStranger);
+    if (pusherRef.current && privateChannelRef.current) {
+        if (notify) {
+            // Notify the other user that the chat has ended
+            privateChannelRef.current.trigger('client-chat-ended', { userId: user?.id });
+        }
+        pusherRef.current.unsubscribe(privateChannelRef.current.name);
+        privateChannelRef.current = null;
     }
+    setStranger(null);
     setMessages([]);
     setImageToSend(null);
     setImagePreview(null);
-    setChatStartTime(Date.now());
-    return newStranger;
-  }, [user?.id, addStrangerToHistory, endChatSession]);
+    setChatStartTime(null);
+  }, [user, stranger, chatStartTime]);
 
-  const handleNewChat = useCallback(async () => {
-    const newStranger = await startNewRandomChat();
-    if (newStranger) {
-        toast({
-            title: 'Finding new chat...',
-            description: `You have been connected with ${newStranger.username}.`,
-        });
-    } else {
-        toast({
-            variant: 'destructive',
-            title: 'No users found',
-            description: 'No online users are available. Please try again later.',
-        });
+  const cleanupPusher = useCallback(() => {
+      if (pusherRef.current) {
+        pusherRef.current.disconnect();
+        pusherRef.current = null;
+      }
+  }, []);
+
+  const handleNewChat = useCallback(() => {
+    endChatSession();
+    setIsSearching(true);
+    if (waitingChannelRef.current) {
+        waitingChannelRef.current.subscribe();
     }
-  }, [startNewRandomChat, toast]);
-  
-  const resetInactivityTimer = useCallback(() => {
-    if (inactivityTimerRef.current) {
-      clearTimeout(inactivityTimerRef.current);
-    }
-    inactivityTimerRef.current = setTimeout(() => {
-      toast({
-        variant: 'destructive',
-        title: 'Disconnected',
-        description: 'You were disconnected due to inactivity.',
-      });
-      handleNewChat();
-    }, INACTIVITY_TIMEOUT);
-  }, [handleNewChat, toast]);
+  }, [endChatSession]);
 
   useEffect(() => {
-    if (!user || !stranger) return;
+      if (!isLoaded || !user) return;
+      
+      // Initialize Pusher only once
+      if (!pusherRef.current) {
+        pusherRef.current = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+          cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+          authEndpoint: '/api/pusher/auth',
+          auth: {
+              params: { user_profile: JSON.stringify(user) }
+          }
+        });
+      }
+
+      if (initialS) {
+        setChatStartTime(Date.now());
+        addStrangerToHistory(initialS);
+      } else {
+        handleNewChat();
+      }
+
+      // Destructor: ensures we disconnect when the component unmounts
+      return () => cleanupPusher();
+  }, [isLoaded, user, initialS, addStrangerToHistory, handleNewChat, cleanupPusher]);
+  
+  // Effect for handling Pusher channel subscriptions and events
+  useEffect(() => {
+    if (!pusherRef.current || !isSearching || !user) return;
+
+    if (!waitingChannelRef.current) {
+        waitingChannelRef.current = pusherRef.current.subscribe(WAITING_CHANNEL_NAME) as PresenceChannel;
+
+        waitingChannelRef.current.bind('pusher:subscription_succeeded', async () => {
+            // Now that we are in the waiting room, ask the server to find a match
+            try {
+                await fetch('/api/pusher/matchmake', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(user)
+                });
+            } catch (error) {
+                console.error('Failed to initiate matchmaking:', error);
+                toast({ variant: 'destructive', title: 'Connection Error', description: 'Could not contact the matchmaking service.' });
+                setIsSearching(false);
+            }
+        });
+
+        waitingChannelRef.current.bind('pusher:subscription_error', (error: any) => {
+            console.error('Pusher waiting room error:', error);
+            toast({ variant: 'destructive', title: 'Error Joining Waiting Room', description: 'Please check your connection and try again.' });
+            setIsSearching(false);
+        });
+    }
+
+    const chatRoomId = getChatRoomId(user.id, stranger?.id || '');
+    const privateChannelName = `private-${chatRoomId}`;
+
+    // Listen for the match-found event on our future private channel
+    pusherRef.current.bind('match-found', ({ stranger: newStranger }: { stranger: UserProfile }) => {
+        if (newStranger.id !== user.id) {
+            setIsSearching(false);
+            setStranger(newStranger);
+            addStrangerToHistory(newStranger);
+            setChatStartTime(Date.now());
+            toast({ title: 'Match Found!', description: `You are now chatting with ${newStranger.username}.` });
+
+            // Unsubscribe from the waiting room
+            if (waitingChannelRef.current) {
+                pusherRef.current?.unsubscribe(WAITING_CHANNEL_NAME);
+            }
+            
+            // Subscribe to the new private channel for this chat
+            privateChannelRef.current = pusherRef.current?.subscribe(privateChannelName);
+
+            if (privateChannelRef.current) {
+                 privateChannelRef.current.bind('client-chat-ended', () => {
+                    toast({ title: 'Chat Ended', description: `${newStranger.username} has left the chat.` });
+                    endChatSession(false); // don't re-notify the other user
+                    handleNewChat();
+                });
+            }
+        }
+    });
+
+    // Cleanup listeners on unmount or when dependencies change
+    return () => {
+        if(pusherRef.current) {
+            pusherRef.current.unbind('match-found');
+        }
+    }
+
+  }, [isSearching, user, getChatRoomId, addStrangerToHistory, toast]);
+
+  // Firestore message subscription
+  useEffect(() => {
+    if (!user || !stranger || stranger.id === 'bot') return;
 
     const chatRoomId = getChatRoomId(user.id, stranger.id);
     const q = query(collection(db, 'chats', chatRoomId, 'messages'), orderBy('timestamp', 'asc'));
@@ -115,57 +201,7 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
     });
 
     return () => unsubscribe();
-  }, [user, stranger]);
-
-  useEffect(() => {
-    resetInactivityTimer();
-    return () => {
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-      }
-    };
-  }, [resetInactivityTimer, messages]);
-
-  useEffect(() => {
-    if(isLoaded && initialStranger) {
-      setStranger(initialStranger);
-      addStrangerToHistory(initialStranger);
-      setChatStartTime(Date.now());
-
-      if (initialFilters) {
-        const filters: SearchFilters = JSON.parse(initialFilters);
-        findStrangerAction(filters, user?.id).then(({ stranger, match }) => {
-            setStranger(stranger);
-            if (stranger) {
-                addStrangerToHistory(stranger);
-                if (match) {
-                    toast({
-                        title: 'Found a match!',
-                        description: `You have been connected with ${stranger.username}.`,
-                    });
-                } else {
-                    toast({
-                         title: 'No match found',
-                         description: "We couldn't find anyone with your criteria. Connecting you with a random user.",
-                    });
-                }
-            } else {
-                 toast({
-                    variant: 'destructive',
-                    title: 'No users found',
-                    description: 'No online users are available. Please try again later.',
-                });
-            }
-        });
-      }
-    }
-  }, [initialStranger, initialFilters, addStrangerToHistory, user?.id, toast, isLoaded]);
-
-  useEffect(() => {
-      return () => {
-          endChatSession();
-      };
-  }, [endChatSession]);
+  }, [user, stranger, getChatRoomId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -196,17 +232,19 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
   
   const handleBlockUser = async () => {
       if (!user || !stranger || stranger.id === 'bot') return;
+      const originalStranger = stranger;
       endChatSession();
-      await blockUser(user.id, stranger.id);
-      toast({ title: `${stranger.username} has been blocked. You will not be matched again.` });
+      await blockUser(user.id, originalStranger.id);
+      toast({ title: `${originalStranger.username} has been blocked. You will not be matched again.` });
       handleNewChat();
   };
 
   const handleReportUser = async () => {
       if (!user || !stranger || stranger.id === 'bot') return;
+      const originalStranger = stranger;
       endChatSession();
-      await reportUser(user.id, stranger.id);
-      toast({ title: `${stranger.username} has been reported.` });
+      await reportUser(user.id, originalStranger.id);
+      toast({ title: `${originalStranger.username} has been reported.` });
       handleNewChat();
   };
 
@@ -222,8 +260,6 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
         });
         return;
     }
-
-    resetInactivityTimer();
 
     const localInputValue = inputValue;
     const localImageToSend = imageToSend;
@@ -289,16 +325,16 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
     );
   }
 
-  if (!stranger) {
+  if (isSearching || !stranger) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
-        <Users className="h-16 w-16 mb-4 text-primary" />
-        <h2 className="text-2xl font-bold mb-2">No users found</h2>
-        <p className="text-muted-foreground mb-6">No online users are available. Please try again later.</p>
-        <div className="flex gap-4">
-          <Button onClick={handleNewChat}>Find Another Stranger</Button>
-          <Button variant="outline" onClick={() => window.history.back()}>Go Back</Button>
+        <div className="flex items-center gap-4 mb-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <Users className="h-16 w-16 text-primary" />
         </div>
+        <h2 className="text-2xl font-bold mb-2">Searching for a user...</h2>
+        <p className="text-muted-foreground mb-6">Please wait while we connect you with someone.</p>
+        <Button variant="outline" onClick={() => { setIsSearching(false); window.history.back(); }}>Cancel</Button>
       </div>
     )
   }
@@ -501,10 +537,7 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
             </Button>
             <Input
               value={inputValue}
-              onChange={(e) => {
-                setInputValue(e.target.value);
-                resetInactivityTimer();
-              }}
+              onChange={(e) => setInputValue(e.target.value)}
               placeholder="Type a message..."
               autoComplete="off"
               className="h-11 text-base"
@@ -518,24 +551,4 @@ export function ChatClient({ initialStranger, initialFilters }: ChatClientProps)
       </footer>
     </div>
   );
-}
-
-function TypingIndicator({ avatar }: { avatar: string }) {
-    return (
-        <div className={cn('flex w-full max-w-lg animate-message-in flex-col gap-1 mr-auto items-start')}>
-            <div className={cn('flex items-end gap-3')}>
-                <Avatar className="h-8 w-8">
-                    <AvatarImage src={avatar} />
-                    <AvatarFallback />
-                </Avatar>
-                <div className={cn('rounded-2xl px-4 py-2 text-sm md:text-base shadow-md rounded-bl-none bg-secondary text-secondary-foreground')}>
-                    <div className="flex items-center justify-center gap-1.5 h-6">
-                        <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
-                        <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.15s]" />
-                        <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60" />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
 }
