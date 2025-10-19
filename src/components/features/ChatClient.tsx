@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useTransition, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useTransition } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Paperclip, Power, Send, Users, X, Star, MoreVertical, Shield, Flag, TrendingUp, Cake } from 'lucide-react';
 import Image from 'next/image';
@@ -25,7 +25,6 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 
-const INACTIVITY_TIMEOUT = 2 * 60 * 1000; // 2 minutes
 const WAITING_CHANNEL_NAME = 'presence-waiting-room';
 
 type ChatClientProps = {
@@ -44,30 +43,31 @@ export function ChatClient({ initialStranger: initialS, initialFilters }: ChatCl
   const [isPending, startTransition] = useTransition();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [chatStartTime, setChatStartTime] = useState<number | null>(null);
 
   const [isSearching, setIsSearching] = useState(false);
   const pusherRef = useRef<Pusher | null>(null);
   const waitingChannelRef = useRef<PresenceChannel | null>(null);
-  const privateChannelRef = useRef<Channel | null>(null);
+  const personalChannelRef = useRef<Channel | null>(null);
+  const chatChannelRef = useRef<Channel | null>(null);
 
   const getChatRoomId = useCallback((userId1: string, userId2: string) => {
     return [userId1, userId2].sort().join('_');
   }, []);
+
+  const getPersonalChannelName = (userId: string) => `private-user-${userId}`;
 
   const endChatSession = useCallback((notify: boolean = true) => {
     if (user && stranger && stranger.id !== 'bot' && chatStartTime) {
         const durationInSeconds = (Date.now() - chatStartTime) / 1000;
         handleChatEnd(user.id, stranger.id, durationInSeconds);
     }
-    if (pusherRef.current && privateChannelRef.current) {
-        if (notify) {
-            // Notify the other user that the chat has ended
-            privateChannelRef.current.trigger('client-chat-ended', { userId: user?.id });
+    if (chatChannelRef.current) {
+        if (notify && user) {
+            chatChannelRef.current.trigger('client-chat-ended', { userId: user.id });
         }
-        pusherRef.current.unsubscribe(privateChannelRef.current.name);
-        privateChannelRef.current = null;
+        pusherRef.current?.unsubscribe(chatChannelRef.current.name);
+        chatChannelRef.current = null;
     }
     setStranger(null);
     setMessages([]);
@@ -78,24 +78,87 @@ export function ChatClient({ initialStranger: initialS, initialFilters }: ChatCl
 
   const cleanupPusher = useCallback(() => {
       if (pusherRef.current) {
+        console.log("Disconnecting Pusher");
         pusherRef.current.disconnect();
         pusherRef.current = null;
       }
   }, []);
 
-  const handleNewChat = useCallback(() => {
-    endChatSession();
+  const startSearch = useCallback(() => {
+    console.log("Starting search...");
+    endChatSession(false);
     setIsSearching(true);
-    if (waitingChannelRef.current) {
-        waitingChannelRef.current.subscribe();
-    }
-  }, [endChatSession]);
+    
+    if (!pusherRef.current || !user) return;
 
+    // 1. Subscribe to personal channel for match notifications
+    if (!personalChannelRef.current) {
+        const personalChannelName = getPersonalChannelName(user.id);
+        personalChannelRef.current = pusherRef.current.subscribe(personalChannelName);
+        
+        personalChannelRef.current.bind('match-found', ({ stranger: newStranger, chatRoomId }: { stranger: UserProfile, chatRoomId: string }) => {
+            console.log("Match found!", newStranger);
+            setIsSearching(false);
+
+            // Unsubscribe from waiting and personal channels
+            if (waitingChannelRef.current) pusherRef.current?.unsubscribe(waitingChannelRef.current.name);
+            if (personalChannelRef.current) pusherRef.current?.unsubscribe(personalChannelRef.current.name);
+            waitingChannelRef.current = null;
+            personalChannelRef.current = null;
+
+            // 2. Set stranger and connect to the new private chat room
+            setStranger(newStranger);
+            addStrangerToHistory(newStranger);
+            setChatStartTime(Date.now());
+
+            const chatChannelName = `private-${chatRoomId}`;
+            chatChannelRef.current = pusherRef.current.subscribe(chatChannelName);
+
+            // Bind to chat events
+            chatChannelRef.current.bind('client-chat-ended', () => {
+                toast({ title: 'Chat Ended', description: `${newStranger.username} has left the chat.` });
+                endChatSession(false); 
+                startSearch();
+            });
+
+            toast({ title: 'Match Found!', description: `You are now chatting with ${newStranger.username}.` });
+        });
+    }
+
+    // 2. Subscribe to the waiting room
+    if (!waitingChannelRef.current) {
+        waitingChannelRef.current = pusherRef.current.subscribe(WAITING_CHANNEL_NAME) as PresenceChannel;
+
+        waitingChannelRef.current.bind('pusher:subscription_succeeded', async () => {
+            console.log("Subscribed to waiting room. Triggering matchmake...");
+            // 3. Trigger matchmaking on the server
+            try {
+                await fetch('/api/pusher/matchmake', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(user)
+                });
+            } catch (error) {
+                console.error('Failed to initiate matchmaking:', error);
+                toast({ variant: 'destructive', title: 'Connection Error', description: 'Could not contact matchmaking service.' });
+                setIsSearching(false);
+            }
+        });
+
+        waitingChannelRef.current.bind('pusher:subscription_error', (error: any) => {
+            console.error('Pusher waiting room error:', error);
+            toast({ variant: 'destructive', title: 'Error Joining Waiting Room', description: 'Please check your connection.' });
+            setIsSearching(false);
+        });
+    }
+  }, [user, endChatSession, addStrangerToHistory, toast]);
+
+  // Main setup effect
   useEffect(() => {
       if (!isLoaded || !user) return;
       
-      // Initialize Pusher only once
       if (!pusherRef.current) {
+        console.log("Initializing Pusher...");
         pusherRef.current = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
           cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
           authEndpoint: '/api/pusher/auth',
@@ -108,85 +171,25 @@ export function ChatClient({ initialStranger: initialS, initialFilters }: ChatCl
       if (initialS) {
         setChatStartTime(Date.now());
         addStrangerToHistory(initialS);
+        const chatRoomId = getChatRoomId(user.id, initialS.id);
+        const chatChannelName = `private-${chatRoomId}`;
+        chatChannelRef.current = pusherRef.current.subscribe(chatChannelName);
+         chatChannelRef.current.bind('client-chat-ended', () => {
+            toast({ title: 'Chat Ended', description: `${initialS.username} has left the chat.` });
+            endChatSession(false);
+        });
       } else {
-        handleNewChat();
+        startSearch();
       }
 
-      // Destructor: ensures we disconnect when the component unmounts
-      return () => cleanupPusher();
-  }, [isLoaded, user, initialS, addStrangerToHistory, handleNewChat, cleanupPusher]);
-  
-  // Effect for handling Pusher channel subscriptions and events
-  useEffect(() => {
-    if (!pusherRef.current || !isSearching || !user) return;
-
-    if (!waitingChannelRef.current) {
-        waitingChannelRef.current = pusherRef.current.subscribe(WAITING_CHANNEL_NAME) as PresenceChannel;
-
-        waitingChannelRef.current.bind('pusher:subscription_succeeded', async () => {
-            // Now that we are in the waiting room, ask the server to find a match
-            try {
-                await fetch('/api/pusher/matchmake', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(user)
-                });
-            } catch (error) {
-                console.error('Failed to initiate matchmaking:', error);
-                toast({ variant: 'destructive', title: 'Connection Error', description: 'Could not contact the matchmaking service.' });
-                setIsSearching(false);
-            }
-        });
-
-        waitingChannelRef.current.bind('pusher:subscription_error', (error: any) => {
-            console.error('Pusher waiting room error:', error);
-            toast({ variant: 'destructive', title: 'Error Joining Waiting Room', description: 'Please check your connection and try again.' });
-            setIsSearching(false);
-        });
-    }
-
-    const chatRoomId = getChatRoomId(user.id, stranger?.id || '');
-    const privateChannelName = `private-${chatRoomId}`;
-
-    // Listen for the match-found event on our future private channel
-    pusherRef.current.bind('match-found', ({ stranger: newStranger }: { stranger: UserProfile }) => {
-        if (newStranger.id !== user.id) {
-            setIsSearching(false);
-            setStranger(newStranger);
-            addStrangerToHistory(newStranger);
-            setChatStartTime(Date.now());
-            toast({ title: 'Match Found!', description: `You are now chatting with ${newStranger.username}.` });
-
-            // Unsubscribe from the waiting room
-            if (waitingChannelRef.current) {
-                pusherRef.current?.unsubscribe(WAITING_CHANNEL_NAME);
-            }
-            
-            // Subscribe to the new private channel for this chat
-            privateChannelRef.current = pusherRef.current?.subscribe(privateChannelName);
-
-            if (privateChannelRef.current) {
-                 privateChannelRef.current.bind('client-chat-ended', () => {
-                    toast({ title: 'Chat Ended', description: `${newStranger.username} has left the chat.` });
-                    endChatSession(false); // don't re-notify the other user
-                    handleNewChat();
-                });
-            }
-        }
-    });
-
-    // Cleanup listeners on unmount or when dependencies change
-    return () => {
-        if(pusherRef.current) {
-            pusherRef.current.unbind('match-found');
-        }
-    }
-
-  }, [isSearching, user, getChatRoomId, addStrangerToHistory, toast]);
+      return () => {
+        cleanupPusher();
+      };
+  }, [isLoaded, user, initialS, addStrangerToHistory, cleanupPusher, startSearch, getChatRoomId, endChatSession, toast]);
 
   // Firestore message subscription
   useEffect(() => {
-    if (!user || !stranger || stranger.id === 'bot') return;
+    if (!user || !stranger || stranger.id === 'bot' || !chatChannelRef.current) return;
 
     const chatRoomId = getChatRoomId(user.id, stranger.id);
     const q = query(collection(db, 'chats', chatRoomId, 'messages'), orderBy('timestamp', 'asc'));
@@ -233,19 +236,19 @@ export function ChatClient({ initialStranger: initialS, initialFilters }: ChatCl
   const handleBlockUser = async () => {
       if (!user || !stranger || stranger.id === 'bot') return;
       const originalStranger = stranger;
-      endChatSession();
+      endChatSession(true);
       await blockUser(user.id, originalStranger.id);
       toast({ title: `${originalStranger.username} has been blocked. You will not be matched again.` });
-      handleNewChat();
+      startSearch();
   };
 
   const handleReportUser = async () => {
       if (!user || !stranger || stranger.id === 'bot') return;
       const originalStranger = stranger;
-      endChatSession();
+      endChatSession(true);
       await reportUser(user.id, originalStranger.id);
       toast({ title: `${originalStranger.username} has been reported.` });
-      handleNewChat();
+      startSearch();
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -253,17 +256,12 @@ export function ChatClient({ initialStranger: initialS, initialFilters }: ChatCl
     if ((!inputValue.trim() && !imageToSend) || !user || !stranger) return;
     
     if (stranger.id === 'bot') {
-        toast({
-            variant: 'destructive',
-            title: 'This is a bot',
-            description: 'You cannot chat with the bot. Please start a new chat to talk to a real user.',
-        });
+        toast({ variant: 'destructive', title: 'Cannot chat with bot' });
         return;
     }
 
     const localInputValue = inputValue;
     const localImageToSend = imageToSend;
-
     setInputValue('');
     setImageToSend(null);
     setImagePreview(null);
@@ -274,45 +272,23 @@ export function ChatClient({ initialStranger: initialS, initialFilters }: ChatCl
         if (localImageToSend) {
           const storageRef = ref(storage, `chat_images/${Date.now()}_${localImageToSend.name}`);
           const uploadTask = uploadBytesResumable(storageRef, localImageToSend);
-          
-          await new Promise<void>((resolve, reject) => {
-            uploadTask.on('state_changed',
-              null, // no progress observer
-              (error) => {
-                console.error('Upload failed:', error);
-                reject(error);
-              },
-              async () => {
-                imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
-                resolve();
-              }
-            );
-          });
+          imageUrl = await getDownloadURL((await uploadTask).ref);
         }
 
         const chatRoomId = getChatRoomId(user.id, stranger.id);
-        const messageData = {
+        await addDoc(collection(db, 'chats', chatRoomId, 'messages'), {
             text: localInputValue,
             senderId: user.id,
             avatar: user.avatar,
             timestamp: serverTimestamp(),
             image: imageUrl,
-        };
-
-        await addDoc(collection(db, 'chats', chatRoomId, 'messages'), messageData);
+        });
       } catch (error) {
         console.error('Error sending message: ', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Failed to send message.',
-        });
-        // Optionally, restore input values
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to send message.' });
         setInputValue(localInputValue);
         setImageToSend(localImageToSend);
-        if (localImageToSend) {
-          setImagePreview(URL.createObjectURL(localImageToSend));
-        }
+        if (localImageToSend) setImagePreview(URL.createObjectURL(localImageToSend));
       }
     });
   };
@@ -325,7 +301,7 @@ export function ChatClient({ initialStranger: initialS, initialFilters }: ChatCl
     );
   }
 
-  if (isSearching || !stranger) {
+  if (isSearching) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <div className="flex items-center gap-4 mb-4">
@@ -334,7 +310,20 @@ export function ChatClient({ initialStranger: initialS, initialFilters }: ChatCl
         </div>
         <h2 className="text-2xl font-bold mb-2">Searching for a user...</h2>
         <p className="text-muted-foreground mb-6">Please wait while we connect you with someone.</p>
-        <Button variant="outline" onClick={() => { setIsSearching(false); window.history.back(); }}>Cancel</Button>
+        <Button variant="outline" onClick={() => { setIsSearching(false); cleanupPusher(); window.history.back(); }}>Cancel</Button>
+      </div>
+    )
+  }
+
+  if (!stranger) { // Fallback for when no initial stranger and not searching
+     return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
+        <div className="flex items-center gap-4 mb-4">
+            <Users className="h-16 w-16 text-primary" />
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Ready to Chat?</h2>
+        <p className="text-muted-foreground mb-6">Click the button below to find a random user to chat with.</p>
+        <Button onClick={startSearch}>Find a Stranger</Button>
       </div>
     )
   }
@@ -359,11 +348,10 @@ export function ChatClient({ initialStranger: initialS, initialFilters }: ChatCl
                 </Avatar>
                 <div>
                   <p className="font-bold">{stranger.username}</p>
-                  <p className={cn("text-xs", stranger.online ? "text-primary" : "text-muted-foreground")}>{stranger.online ? 'Online' : 'Offline'}</p>
                 </div>
               </div>
             </DialogTrigger>
-            <DialogContent>
+             <DialogContent>
                 <Card className="border-none">
                     <CardHeader className="items-center text-center">
                         <Dialog>
@@ -416,7 +404,7 @@ export function ChatClient({ initialStranger: initialS, initialFilters }: ChatCl
             <Button variant="ghost" size="icon" onClick={handleToggleFavorite} aria-label={isCurrentlyFavorite ? 'Remove from favorites' : 'Add to favorites'} disabled={stranger.id === 'bot'}>
                 <Star className={cn("h-5 w-5", isCurrentlyFavorite ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
             </Button>
-            <Button variant="outline" size="sm" onClick={handleNewChat} aria-label="Start new chat">
+            <Button variant="outline" size="sm" onClick={startSearch} aria-label="Start new chat">
                 <Power className="mr-2 h-4 w-4 text-primary" />
                 New Chat
             </Button>
@@ -500,7 +488,7 @@ export function ChatClient({ initialStranger: initialS, initialFilters }: ChatCl
                         "text-xs text-muted-foreground",
                         message.senderId === user.id ? "pr-11" : "pl-11"
                      )}>
-                        {format(new Date(message.timestamp), 'p')}
+                        {message.timestamp ? format(new Date(message.timestamp), 'p') : ''}
                     </p>
                 </div>
             ))}
