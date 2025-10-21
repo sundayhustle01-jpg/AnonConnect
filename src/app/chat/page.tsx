@@ -1,47 +1,13 @@
 import { ChatClient } from '@/components/features/ChatClient';
 import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
-import type { UserProfile, SearchFilters } from '@/lib/types';
-import { findStranger as findStrangerAction } from '@/app/actions';
 
-async function getInitialStranger(
-  strangerParam: string | null,
-  filtersParam: string | null,
-  userId: string | undefined
-): Promise<UserProfile> {
-  if (strangerParam) {
-    try {
-      const passedStranger: UserProfile = JSON.parse(strangerParam);
-      return passedStranger;
-    } catch (error) {
-      console.error('Failed to parse stranger from URL, finding random.', error);
-    }
-  }
-
-  if (filtersParam) {
-    try {
-      const filters: SearchFilters = JSON.parse(filtersParam);
-      const { stranger } = await findStrangerAction(filters, userId);
-      return stranger;
-    } catch (error) {
-      console.error('Failed to parse filters from URL, finding random.', error);
-    }
-  }
-
-  const { stranger } = await findStrangerAction({}, userId);
-  return stranger;
-}
-
-// We can't get user from useUser hook on the server, so we'll pass initial data down.
-// This example doesn't have real auth, so we pass undefined for the userId.
-// In a real app, you'd get the session here.
-export default async function ChatPage({ searchParams }: any) {
-  const strangerParam =
-    typeof searchParams.stranger === 'string' ? searchParams.stranger : null;
-  const filtersParam =
-    typeof searchParams.filters === 'string' ? searchParams.filters : null;
-
-  const initialStranger = await getInitialStranger(strangerParam, filtersParam, undefined);
+// The chat page now simply renders the client, which handles all logic.
+// The initial stranger and filters are passed via search params if they exist,
+// but the server no longer pre-fetches a stranger.
+export default function ChatPage({ searchParams }: any) {
+  const initialStranger =
+    typeof searchParams.stranger === 'string' ? JSON.parse(searchParams.stranger) : null;
   const initialFilters =
     typeof searchParams.filters === 'string' ? searchParams.filters : null;
 
